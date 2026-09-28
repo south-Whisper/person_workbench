@@ -1,0 +1,16 @@
+import request from './request'
+export const getCandidateList = params => request.get('/candidate/list', { params }).then(r => r.data)
+export const getCandidate = id => request.get('/candidate/' + id).then(r => r.data)
+export const createCandidate = data => request.post('/candidate', data).then(r => r.data)
+export const updateCandidate = (id, data) => request.put('/candidate/' + id, data).then(r => r.data)
+export const getDuplicates = params => request.get('/candidate/duplicates', { params }).then(r => r.data)
+export const createRecord = (id, type, data) => request.post('/candidate/' + id + '/records/' + type, data).then(r => r.data)
+export const updateRecord = (id, type, recordId, data) => request.put('/candidate/' + id + '/records/' + type + '/' + recordId, data).then(r => r.data)
+export const getWorkspace = () => request.get('/workspace').then(r => r.data)
+export const getAuditLog = () => request.get('/audit').then(r => r.data)
+export const uploadAsset = (id, file) => {
+  const form = new FormData()
+  form.append('file', file)
+  return request.post('/candidate/' + id + '/assets', form).then(r => r.data)
+}
+export const downloadAsset = (id, assetId) => request.get('/candidate/' + id + '/assets/' + assetId + '/download', { responseType: 'blob' }).then(r => r.data)

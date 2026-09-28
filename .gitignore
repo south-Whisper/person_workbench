@@ -1,0 +1,11 @@
+front/node_modules/
+front/dist/
+back/target/
+back/data/
+back/uploads/
+*.log
+.env
+.env.local
+front/.env.local
+back/.env
+test-output/

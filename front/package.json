@@ -1,0 +1,24 @@
+{
+  "name": "sethub-talent",
+  "version": "0.0.0",
+  "scripts": {
+    "dev": "vite",
+    "dev:user": "vite --mode user --port 5173",
+    "dev:agent": "vite --mode agent --port 5174",
+    "build": "vite build",
+    "serve": "vite preview",
+    "test": "node --test tests/*.test.mjs"
+  },
+  "dependencies": {
+    "axios": "^1.20.0",
+    "element-plus": "^2.14.6",
+    "vue": "^3.2.8",
+    "vue-router": "^4.6.4"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^1.6.0",
+    "@vue/compiler-sfc": "^3.2.6",
+    "vite": "^8.3.1"
+  },
+  "type": "module"
+}
