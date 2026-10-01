@@ -60,7 +60,7 @@
       <p v-if="error" class="record-error" role="alert">{{ error }}</p>
       <div class="record-dialog-actions">
         <button v-if="!readOnlyOffer" type="button" class="btn btn-secondary" :disabled="saving" @click="visible = false">取消</button>
-        <button v-if="readOnlyOffer" type="button" class="btn btn-primary" @click="exportOffer">导出 Offer</button>
+        <button v-if="readOnlyOffer" type="button" class="btn btn-primary" @click="exportOfferPdf">导出 PDF</button>
         <button v-if="!readOnlyOffer" type="submit" class="btn" :disabled="saving">{{ saving ? '正在保存…' : saveButtonLabel }}</button>
         <button v-if="recordType === 'offers' && !readOnlyOffer" type="button" class="btn btn-primary" :disabled="saving" @click="confirmOfferIssue">{{ saving ? '正在处理…' : '确认并发送 Offer' }}</button>
       </div>
@@ -122,7 +122,7 @@ const fields = computed(() => {
     opportunities: [text('title', '寻访机会标题', true, { wide: true, placeholder: '例如：主动接触资深摄影师' }), { ...job, required: false }, date('startedAt', '首次接触日期', true), owner('HR', true), choice('status', '当前状态', ['新发现', '待联系', '已联系', '有效沟通', '持续培育', '暂不考虑', '对方拒绝', '公司放弃', '重新激活'], true), choice('companyIntent', '公司意愿', ['未判断', '低', '一般', '较高', '很高', '放弃']), choice('talentIntent', '人才意愿', ['未知', '明确拒绝', '暂不考虑', '可以了解', '有兴趣', '积极', '强烈']), area('summary', '发现背景与沟通摘要'), area('reason', '暂缓 / 拒绝 / 放弃原因'), text('nextStep', '下一步'), date('nextContactAt', '下次跟进时间', false, true)],
     applications: [job, date('startedAt', '应聘开始日期', true), owner('HR', true), choice('status', '应聘状态', ['沟通中', '面试中', 'Offer中', '已入职', '候选人退出', '公司淘汰', '人才储备', '长期无响应'], true), choice('companyIntent', '公司意愿', ['未判断', '低', '一般', '较高', '很高', '放弃']), choice('talentIntent', '人才意愿', ['未知', '明确拒绝', '暂不考虑', '可以了解', '有兴趣', '积极', '强烈']), area('reason', '结果 / 关闭原因', false, '例如：2021 年面试通过，但候选人因家庭原因没有继续推进'), text('nextStep', '下一步'), date('nextContactAt', '下次跟进时间', false, true)],
     interviews: props.mode === 'evaluation'
-      ? [{ key: 'interviewContext', label: '对应面试安排', type: 'interview-context', wide: true }, text('score', '综合评分（1—5）', true, { type: 'number', min: 1, max: 5, step: 0.5 }), choice('result', '推荐结论', ['强烈推荐', '推荐', '保留', '不推荐'], true), area('feedback', '事实、评价与依据', true, '记录具体表现、优势、风险和判断依据')]
+      ? [{ key: 'interviewContext', label: '对应面试安排', type: 'interview-context', wide: true }, choice('score', '综合评分', [1, 2, 3, 4, 5], true), choice('result', '推荐结论', ['强烈推荐', '推荐', '保留', '不推荐'], true), area('feedback', '事实、评价与依据', true, '记录具体表现、优势、风险和判断依据')]
       : [application(true), date('scheduledAt', '面试时间', true, true, true), choice('round', '轮次', ['初面', '二面', '三面', '终面'], true), owner('面试官', true), choice('method', '面试方式', ['现场', '视频', '电话', '作品测试']), choice('status', '面试状态', ['待面试', '已改期', '已取消', '未出席'], true), area('reason', '改期 / 取消 / 未出席原因')],
     offers: [application(true), text('recipientEmail', '发送邮箱', true, { type: 'email', wide: true, placeholder: '用于接收 Offer 的邮箱' }), ...(readOnlyOffer.value ? [text('sentAt', 'Offer 发送日期', false, { wide: true })] : []), { key: 'positionBudget', label: '岗位期望预算', type: 'budget', wide: true }, choice('salaryMode', '薪资填写方式', [{ value: 'monthly', label: '按月薪填写' }, { value: 'annual', label: '按年薪填写' }], true), ...(form.salaryMode === 'annual' ? [text('annualSalary', '谈定年薪（K / 年）', true, { type: 'number', min: 0, step: 0.01, wide: true })] : [text('actualSalary', '谈定月薪（K / 月）', true, { type: 'number', min: 0, step: 0.01 }), { key: 'annualPreview', label: '折合年薪', type: 'annual-preview' }, choice('salaryMonths', '年薪月数', [12, 13, 14, 15, 16, 17, 18], true)]), choice('probationMonths', '试用期', [{ value: 0, label: '无试用期' }, { value: 1, label: '1个月' }, { value: 2, label: '2个月' }, { value: 3, label: '3个月' }, { value: 4, label: '4个月' }, { value: 5, label: '5个月' }, { value: 6, label: '6个月' }], true), choice('socialInsurance', '社保与公积金', ['五险一金', '六险一金', '五险', '商业保险', '无社保'], true), date('expectedStartDate', '计划入职日期', true, false, true), choice('validityDays', 'Offer 有效期', [{ value: 7, label: '7 天' }, { value: 15, label: '15 天' }], true), owner('HR', true), area('remark', '补充说明')],
     compensations: [choice('type', '薪资事实类型', ['候选人公开期望', '候选人当前收入', '沟通后期望', '公司内部预算', '公司本轮报价', '候选人还价', '外部Offer', '最终Offer', '实际入职薪资', '转正调薪', '年度调薪', '晋升调薪', '离职时薪资'], true), salary, date('occurredAt', '生效 / 沟通时间', true, true), text('source', '信息来源', true, { placeholder: '例如：候选人口述、合同、面谈' }), application(), area('remark', '结构与备注', false, '说明税前 / 税后、绩效、年终奖及其他待遇')],
@@ -275,7 +275,7 @@ async function save(issueOffer = false) {
   finally { saving.value = false }
 }
 
-function exportOffer() {
+function exportOfferPdf() {
   const job = selectedPosition.value?.name || selectedApplication.value?.jobName || '岗位待确认'
   const company = selectedPosition.value?.company || selectedApplication.value?.company || '公司待确认'
   const lines = [
@@ -293,14 +293,14 @@ function exportOffer() {
     `负责 HR：${form.owner || '未记录'}`,
     `补充说明：${form.remark || '无'}`
   ]
-  const blob = new Blob([`\uFEFF${lines.join('\n')}`], { type: 'text/plain;charset=utf-8' })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = `${String(props.person.name || '人才').replace(/[\\/:*?"<>|]/g, '-')}-${String(job).replace(/[\\/:*?"<>|]/g, '-')}-Offer.txt`
-  link.click()
-  URL.revokeObjectURL(url)
-  ElMessage.success('Offer 已导出')
+  const escapeHtml = value => String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char])
+  const title = `${String(props.person.name || '人才').replace(/[\\/:*?"<>|]/g, '-')}-${String(job).replace(/[\\/:*?"<>|]/g, '-')}-Offer`
+  const rows = lines.slice(1).map(line => { const split = line.indexOf('：'); return `<tr><th>${escapeHtml(line.slice(0, split))}</th><td>${escapeHtml(line.slice(split + 1))}</td></tr>` }).join('')
+  const popup = window.open('', '_blank')
+  if (!popup) { ElMessage.error('浏览器阻止了导出窗口，请允许弹窗后重试'); return }
+  popup.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(title)}</title><style>@page{size:A4;margin:18mm}*{box-sizing:border-box}body{margin:0;font-family:"Microsoft YaHei",Arial,sans-serif;color:#1f2937}main{border:1px solid #dbe3ee;border-radius:16px;padding:30px}small{color:#2563eb;letter-spacing:2px}h1{margin:8px 0 24px;font-size:28px}table{width:100%;border-collapse:collapse}th,td{padding:13px 15px;border-bottom:1px solid #e5e7eb;text-align:left;font-size:13px}th{width:145px;color:#64748b;font-weight:500}td{font-weight:650}footer{margin-top:26px;color:#94a3b8;text-align:center;font-size:11px}@media print{main{border:0;padding:0}}</style></head><body><main><small>OFFER LETTER</small><h1>Offer 录用信息</h1><table>${rows}</table><footer>SetHub 人才管理 · 正式录用文件</footer></main><script>window.onload=()=>{window.print();window.onafterprint=()=>window.close()}<\/script></body></html>`)
+  popup.document.close()
+  ElMessage.success('已打开 PDF 保存窗口，请选择“另存为 PDF”')
 }
 </script>
 

@@ -69,7 +69,8 @@ public class SchemaMigration {
         db.execute("CREATE TABLE IF NOT EXISTS questionnaire_invitation (id BIGINT AUTO_INCREMENT PRIMARY KEY, org_id BIGINT NOT NULL, token_hash VARCHAR(64) NOT NULL UNIQUE, recipient_email VARCHAR(240) NOT NULL, recipient_name VARCHAR(120), job_id BIGINT NOT NULL, owner_employee_id BIGINT NOT NULL, status VARCHAR(40) NOT NULL DEFAULT '待填写', expires_at VARCHAR(40) NOT NULL, submitted_at VARCHAR(40), person_id BIGINT, application_id BIGINT, created_at VARCHAR(40) NOT NULL)");
         db.execute("CREATE TABLE IF NOT EXISTS mail_setting (id BIGINT AUTO_INCREMENT PRIMARY KEY, org_id BIGINT NOT NULL, company_id BIGINT, provider VARCHAR(80) NOT NULL, host VARCHAR(240) NOT NULL, port INT NOT NULL, username VARCHAR(240) NOT NULL, password_cipher LONGTEXT, sender_email VARCHAR(240) NOT NULL, ssl_enabled BOOLEAN NOT NULL DEFAULT TRUE, starttls_enabled BOOLEAN NOT NULL DEFAULT FALSE, updated_at VARCHAR(40) NOT NULL, updated_by VARCHAR(120) NOT NULL, UNIQUE KEY uq_mail_setting_company(org_id,company_id))");
         migrateMailSettings();
-        db.execute("CREATE TABLE IF NOT EXISTS product_release (id BIGINT AUTO_INCREMENT PRIMARY KEY, version VARCHAR(40) NOT NULL UNIQUE, release_date VARCHAR(40) NOT NULL, title VARCHAR(240) NOT NULL, summary LONGTEXT NOT NULL, changes_json LONGTEXT NOT NULL, created_at VARCHAR(40) NOT NULL)");
+        db.execute("CREATE TABLE IF NOT EXISTS product_release (id BIGINT AUTO_INCREMENT PRIMARY KEY, version VARCHAR(40) NOT NULL UNIQUE, release_date VARCHAR(40) NOT NULL, title VARCHAR(240) NOT NULL, summary LONGTEXT NOT NULL, changes_json LONGTEXT NOT NULL, active BOOLEAN NOT NULL DEFAULT TRUE, created_at VARCHAR(40) NOT NULL)");
+        if(!columnExists("product_release","active"))db.execute("ALTER TABLE product_release ADD COLUMN active BOOLEAN NOT NULL DEFAULT TRUE");
         initializeProductReleases();
         db.execute("CREATE TABLE IF NOT EXISTS audit (id BIGINT AUTO_INCREMENT PRIMARY KEY, org_id BIGINT NOT NULL, actor VARCHAR(120) NOT NULL, action VARCHAR(80) NOT NULL, created_at VARCHAR(40) NOT NULL, body LONGTEXT NOT NULL)");
         backfillPersonRecords();
@@ -144,38 +145,30 @@ public class SchemaMigration {
     }
 
     private void initializeProductReleases(){
-        insertRelease("V1","2026-10-01","人才招聘全流程首个正式版本","从人才建档、沟通、面试、Offer 到入职与员工账号，形成一套可以连续使用的招聘工作台。",List.of(
-                "人才库改为清晰的表格视图；有证件照时，人才头像统一显示证件照。",
-                "沟通记录可直接安排面试；面试填写结果后，才能进入 Offer 流程。",
-                "公开人才问卷与新建人才共用基础表单，只向人才展示需要本人填写的信息。",
-                "岗位、入职、消息、系统设置等页面统一优化文字、按钮和卡片的清晰度。"
+        insertRelease("V1.0.1","2026-10-01","人才招聘全流程基础版本","完成从人才建档、沟通、面试、Offer 到入职和员工管理的完整流程，并统一后端结构、岗位名额和版本记录。",List.of(
+                "人才库、问卷、沟通、面试、Offer、入职、岗位、员工和系统设置形成完整工作流。",
+                "证件照头像、表格与卡片样式、岗位名额和已招人数在各页面统一展示。",
+                "Offer 邮件支持候选人直接接受或拒绝，版本信息改由数据库统一管理。",
+                "后端按业务职责整理，附件、邮件、认证等公共能力合并复用。",
+                "补充总体架构图、ER 图、时序图、接口用途和部署脚本。"
         ));
-        insertRelease("V1.0.1","2026-10-01","Offer 回复体验与版本记录更新","优化 Offer 发送确认和候选人回复流程，并让版本信息由数据库统一管理。",List.of(
-                "重做 Offer 发送前确认框，改为居中的系统统一样式。",
-                "Offer 邮件内增加“接受 Offer”和“拒绝 Offer”按钮，候选人点击一次即可提交。",
-                "候选人回复结果页不显示人才管理后台，也不需要登录或再次确认。",
-                "版本更新接入数据库，首页弹窗、系统设置和历史版本页统一读取当前版本。"
+        insertRelease("V1.0.2","2026-10-01","面试、Offer 与通知流程优化","精简页面信息，完善面试结果、Offer 回复、入职流转和消息提醒。",List.of(
+                "面试卡片和详情页统一为清晰的中性色；评分改为 1—5 分按钮。",
+                "沟通中安排面试时可单独选择面试官，已完成面试可直接发 Offer 或新增下一轮面试。",
+                "Offer 支持按 PDF 打印保存；接受后直接进入入职流程，拒绝需要二次确认。",
+                "入职页只显示已接受 Offer 的人才，Offer 发送或草稿不再提前出现。",
+                "消息信箱只保留人才已填写问卷、面试安排和 Offer 已确认三类提醒。",
+                "移除顶部搜索框回车提示，并合并人才列表中重复的已入职与录用状态。"
         ));
-        insertRelease("V1.0.2","2026-10-01","后端结构优化与组件复用","按职责整理后端入口和公共能力，减少重复代码，方便后续维护与定位问题。",List.of(
-                "人才、岗位、员工、公共流程和工作台接口按业务拆分，原有接口地址保持不变。",
-                "附件校验、存储、下载和文档预览合并到统一文件服务。",
-                "登录与初始化账号逻辑从网页接口中移入独立认证服务。",
-                "Offer 与人才问卷邮件共用安全转义、卡片外框和表格行组件。",
-                "更新后端架构与函数说明，补充各模块用途、调用关系和维护建议。"
-        ));
-        insertRelease("V1.0.3","2026-10-01","岗位名额与招聘视图优化","岗位名额成为招聘流程的统一约束，Offer、面试与岗位页面按同一套人数数据展示。",List.of(
-                "岗位增加招聘名额，并统一显示已招人数、Offer 占用人数和剩余名额。",
-                "Offer 按岗位分组；名额用完后，页面停止创建，后端也会阻止超额保存或发送。",
-                "面试卡片重做信息层级，证件照、时间、状态、面试结论和操作入口更清楚。",
-                "删除未使用的旧实体、旧 Mapper 和旧初始化代码，保留当前 MySQL 业务架构。",
-                "精简后端说明，补充总体架构图、ER 图、关键时序图和接口用途。"
-        ));
+        db.update("UPDATE product_release SET active=FALSE");
+        db.update("UPDATE product_release SET active=TRUE WHERE version IN ('V1.0.1','V1.0.2')");
     }
 
     private void insertRelease(String version,String date,String title,String summary,List<String> changes){
         Integer exists=db.queryForObject("SELECT COUNT(*) FROM product_release WHERE version=?",Integer.class,version);
-        if(exists!=null&&exists>0)return;
-        db.update("INSERT INTO product_release(version,release_date,title,summary,changes_json,created_at) VALUES(?,?,?,?,?,?)",version,date,title,summary,json.write(Map.of("items",changes)),now());
+        String changesJson=json.write(Map.of("items",changes));
+        if(exists!=null&&exists>0){db.update("UPDATE product_release SET release_date=?,title=?,summary=?,changes_json=?,active=TRUE WHERE version=?",date,title,summary,changesJson,version);return;}
+        db.update("INSERT INTO product_release(version,release_date,title,summary,changes_json,active,created_at) VALUES(?,?,?,?,?,TRUE,?)",version,date,title,summary,changesJson,now());
     }
 
     private void ensureInitialHrAccount() {

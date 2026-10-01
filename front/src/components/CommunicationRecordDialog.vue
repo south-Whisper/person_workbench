@@ -21,7 +21,7 @@
       <section v-if="form.result === '安排面试'" class="inline-interview">
         <header><strong>直接安排本次面试</strong><small>保存沟通记录时会同时建立面试安排，不用再去面试页面重复填写。</small></header>
         <div class="form-grid"><label class="field"><span>面试时间 <b>必填</b></span><el-date-picker v-model="form.interviewScheduledAt" type="datetime" value-format="YYYY-MM-DDTHH:mm" format="YYYY/MM/DD HH:mm" style="width:100%" /></label><fieldset class="choice-field"><legend>面试轮次 <b>必填</b></legend><div class="choices"><button v-for="option in ['初面','二面','三面','终面']" :key="option" type="button" :class="{ selected:form.interviewRound===option }" @click="form.interviewRound=option">{{option}}</button></div></fieldset></div>
-        <fieldset class="choice-field"><legend>面试方式 <b>必填</b></legend><div class="choices"><button v-for="option in ['现场','视频','电话','作品测试']" :key="option" type="button" :class="{ selected:form.interviewMethod===option }" @click="form.interviewMethod=option">{{option}}</button></div></fieldset>
+        <div class="form-grid"><fieldset class="choice-field"><legend>面试方式 <b>必填</b></legend><div class="choices"><button v-for="option in ['现场','视频','电话','作品测试']" :key="option" type="button" :class="{ selected:form.interviewMethod===option }" @click="form.interviewMethod=option">{{option}}</button></div></fieldset><label class="field"><span>面试官 <b>必填</b></span><HrPicker v-model="form.interviewOwner" :employees="employees" placeholder="选择本次面试官" /></label></div>
       </section>
       <label v-if="['暂缓', '候选人拒绝', '公司淘汰'].includes(form.result)" class="field full"><span>判断依据 / 原因 <b>必填</b></span><textarea v-model.trim="form.reason" rows="3" maxlength="2000" placeholder="写清本次决定的事实和原因，方便以后回顾" /></label>
       <div v-if="!skipsFollowUp" class="form-grid">
@@ -62,14 +62,14 @@ const materialTypes = [
 ]
 const form = reactive({})
 function localNow() { const date = new Date(); return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16) }
-function reset() { const tomorrow=new Date(Date.now()+24*60*60*1000);tomorrow.setHours(10,0,0,0);Object.assign(form, { occurredAt: localNow(), channel: '微信', summary: '', companyIntent: props.application.companyIntent || '未判断', talentIntent: props.application.talentIntent || '未知', result: '继续沟通', reason: '', nextStep: props.application.nextStep || '', nextContactAt: '', owner: props.application.owner || props.person.owner || '',interviewScheduledAt:new Date(tomorrow.getTime()-tomorrow.getTimezoneOffset()*60000).toISOString().slice(0,16),interviewRound:'初面',interviewMethod:'现场' }); Object.keys(files).forEach(key => { files[key] = null }); error.value = '' }
+function reset() { const tomorrow=new Date(Date.now()+24*60*60*1000);tomorrow.setHours(10,0,0,0);const owner=props.application.owner || props.person.owner || '';Object.assign(form, { occurredAt: localNow(), channel: '微信', summary: '', companyIntent: props.application.companyIntent || '未判断', talentIntent: props.application.talentIntent || '未知', result: '继续沟通', reason: '', nextStep: props.application.nextStep || '', nextContactAt: '', owner,interviewScheduledAt:new Date(tomorrow.getTime()-tomorrow.getTimezoneOffset()*60000).toISOString().slice(0,16),interviewRound:'初面',interviewMethod:'现场',interviewOwner:owner }); Object.keys(files).forEach(key => { files[key] = null }); error.value = '' }
 function selectFile(key, event) { files[key] = event.target.files?.[0] || null }
-watch(visible, async open => { if (!open) return; reset(); try { employees.value = await getHrList(); if (!form.owner) form.owner = (employees.value.find(item => item.current) || employees.value[0])?.name || '' } catch { error.value = 'HR 名单暂时无法读取。' } }, { immediate: true })
+watch(visible, async open => { if (!open) return; reset(); try { employees.value = await getHrList(); const fallback=(employees.value.find(item => item.current) || employees.value[0])?.name || ''; if (!form.owner) form.owner = fallback; if (!form.interviewOwner) form.interviewOwner = form.owner || fallback } catch { error.value = 'HR 名单暂时无法读取。' } }, { immediate: true })
 async function save() {
   if (saving.value) return
   if (!form.occurredAt || !form.channel || !form.summary || !form.companyIntent || !form.talentIntent || !form.result || !form.owner) { error.value = '请填写沟通时间、沟通人、方式、沟通内容、双方意愿和本次结果。'; return }
   if (['暂缓', '候选人拒绝', '公司淘汰'].includes(form.result) && !form.reason) { error.value = '请写清本次判断的事实和原因。'; return }
-  if(form.result==='安排面试'&&(!form.interviewScheduledAt||!form.interviewRound||!form.interviewMethod)){error.value='请填写面试时间、轮次和方式。';return}
+  if(form.result==='安排面试'&&(!form.interviewScheduledAt||!form.interviewRound||!form.interviewMethod||!form.interviewOwner)){error.value='请填写面试时间、轮次、方式和面试官。';return}
   const schedulesInterview = form.result === '安排面试'
   if (!skipsFollowUp.value && form.nextContactAt && !form.nextStep) { error.value = '设置了跟进时间，请同时写清下一步。'; return }
   saving.value = true; error.value = ''
@@ -77,7 +77,7 @@ async function save() {
     const title = `${form.channel}沟通 · ${props.application.jobName || '应聘岗位'}`
     const materialNames = materialTypes.filter(item => files[item.key]).map(item => `${item.label}：${files[item.key].name}`)
     await createRecord(props.person.id, 'communications', { ...form, nextStep: skipsFollowUp.value ? '' : form.nextStep, nextContactAt: skipsFollowUp.value ? null : form.nextContactAt, type: 'communication', title, applicationId: props.application.id, actor: form.owner, remark: materialNames.length ? `本次收到新资料：${materialNames.join('；')}` : '' })
-    if(form.result==='安排面试')await createRecord(props.person.id,'interviews',{applicationId:props.application.id,scheduledAt:form.interviewScheduledAt,round:form.interviewRound,method:form.interviewMethod,status:'待面试',result:'待评价',owner:form.owner})
+    if(form.result==='安排面试')await createRecord(props.person.id,'interviews',{applicationId:props.application.id,scheduledAt:form.interviewScheduledAt,round:form.interviewRound,method:form.interviewMethod,status:'待面试',result:'待评价',owner:form.interviewOwner})
     const uploads = materialTypes.filter(item => files[item.key]).map(item => uploadAsset(props.person.id, files[item.key], item.label))
     const uploaded = await Promise.allSettled(uploads)
     const failed = uploaded.filter(item => item.status === 'rejected').length

@@ -1,10 +1,11 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { getPublicOffer, respondToPublicOffer } from '../api/candidate'
 import BrandLockup from '@/components/BrandLockup.vue'
 
 const route = useRoute()
+const router = useRouter()
 const token = computed(() => String(route.query.token || ''))
 const decision = computed(() => String(route.query.decision || '').toUpperCase())
 const loading = ref(true)
@@ -16,6 +17,7 @@ const finished = computed(() => ['已接受', '已拒绝'].includes(offer.value?
 const validDecision = computed(() => ['ACCEPTED', 'DECLINED'].includes(decision.value))
 
 async function submitEmailDecision() {
+  if (decision.value === 'DECLINED') { await router.replace({ path: '/offer-response', query: { token: token.value, decision: 'DECLINED' } }); return }
   loading.value = true
   error.value = ''
   try {

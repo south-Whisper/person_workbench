@@ -15,7 +15,7 @@ public class ReleaseService {
     }
 
     public List<Map<String,Object>> releases() {
-        return db.query("SELECT version,release_date,title,summary,changes_json FROM product_release ORDER BY id DESC", (row, index) -> {
+        return db.query("SELECT version,release_date,title,summary,changes_json FROM product_release WHERE active=TRUE ORDER BY id DESC", (row, index) -> {
             Map<String,Object> release = new LinkedHashMap<>();
             release.put("version", row.getString("version"));
             release.put("date", row.getString("release_date"));
