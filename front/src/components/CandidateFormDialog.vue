@@ -125,7 +125,7 @@ let duplicateRequest = 0
 function today() { const now = new Date(); return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}` }
 function unwrap(response) { let value = response; if (value?.data !== undefined) value = value.data; if (value?.data !== undefined) value = value.data; return value }
 function optionsWithCurrent(options, current) { return current && !options.includes(current) ? [...options, current] : options }
-function positionLabel(job) { return `${job.company || '未设置公司'}：${job.name || '未命名岗位'}：${job.recruitmentCode || String(job.id || '').padStart(3, '0')}` }
+function positionLabel(job) { return `${job.company || '未设置公司'}：${job.name || '未命名岗位'}：${job.recruitmentCode || String(job.id || '').padStart(3, '0')}（已招 ${job.hiredCount || 0}/${job.headcount || 1}）` }
 function onStatusSelected() { if (form.status === '已入职') form.result = '录用'; else if (form.result === '录用') form.result = '待定'; resultPopoverOpen.value = true }
 function chooseResult(option) { form.result = option; resultPopoverOpen.value = false }
 function onWorkStatusChange() { if (form.workStatus === '离职') { form.company = ''; form.currentRole = '' } }

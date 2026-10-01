@@ -22,7 +22,7 @@
           </div>
           <select v-else-if="field.type === 'job'" v-model="form[field.key]" :required="field.required">
             <option value="">选择对应岗位</option>
-            <option v-for="job in positions" :key="job.id" :value="job.id">{{ job.company || '未设置公司' }}：{{ job.name }}：{{ job.recruitmentCode || String(job.id).padStart(3, '0') }}{{ job.status ? ` · ${job.status}` : '' }}</option>
+          <option v-for="job in positions" :key="job.id" :value="job.id">{{ job.company || '未设置公司' }}：{{ job.name }}：{{ job.recruitmentCode || String(job.id).padStart(3, '0') }} · 已招 {{ job.hiredCount || 0 }}/{{ job.headcount || 1 }}{{ job.status ? ` · ${job.status}` : '' }}</option>
           </select>
           <div v-else-if="field.type === 'application' && ['offers', 'interviews'].includes(recordType)" class="application-reference" :class="{ empty: !selectedApplication }">
             <template v-if="selectedApplication">

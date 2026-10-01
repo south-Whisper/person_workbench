@@ -74,6 +74,7 @@ public class SchemaMigration {
         db.execute("CREATE TABLE IF NOT EXISTS audit (id BIGINT AUTO_INCREMENT PRIMARY KEY, org_id BIGINT NOT NULL, actor VARCHAR(120) NOT NULL, action VARCHAR(80) NOT NULL, created_at VARCHAR(40) NOT NULL, body LONGTEXT NOT NULL)");
         backfillPersonRecords();
         migrateStructuredBodies();
+        db.update("UPDATE position SET headcount=1 WHERE headcount IS NULL OR headcount<1");
         migrateImportKeys();
         if (db.queryForObject("SELECT COUNT(*) FROM migration WHERE version='schema-v1'", Integer.class)==0) {
             db.update("INSERT INTO migration(version,applied_at) VALUES('schema-v1',?)", now());
@@ -161,6 +162,13 @@ public class SchemaMigration {
                 "登录与初始化账号逻辑从网页接口中移入独立认证服务。",
                 "Offer 与人才问卷邮件共用安全转义、卡片外框和表格行组件。",
                 "更新后端架构与函数说明，补充各模块用途、调用关系和维护建议。"
+        ));
+        insertRelease("V1.0.3","2026-10-01","岗位名额与招聘视图优化","岗位名额成为招聘流程的统一约束，Offer、面试与岗位页面按同一套人数数据展示。",List.of(
+                "岗位增加招聘名额，并统一显示已招人数、Offer 占用人数和剩余名额。",
+                "Offer 按岗位分组；名额用完后，页面停止创建，后端也会阻止超额保存或发送。",
+                "面试卡片重做信息层级，证件照、时间、状态、面试结论和操作入口更清楚。",
+                "删除未使用的旧实体、旧 Mapper 和旧初始化代码，保留当前 MySQL 业务架构。",
+                "精简后端说明，补充总体架构图、ER 图、关键时序图和接口用途。"
         ));
     }
 

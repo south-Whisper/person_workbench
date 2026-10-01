@@ -1,7 +1,0 @@
-<select id="findAll"
-resultType="com.example.demo.entity.JobPosition">
-
-    select *
-    from job_position
-
-</select>
