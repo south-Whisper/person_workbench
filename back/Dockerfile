@@ -3,8 +3,12 @@ FROM ${DOCKER_REGISTRY}/maven:3.9.11-eclipse-temurin-17 AS build
 WORKDIR /build
 
 COPY pom.xml ./
+RUN --mount=type=cache,target=/root/.m2 \
+    mvn -B -DskipTests dependency:go-offline
+
 COPY src ./src
-RUN mvn -B -DskipTests clean package
+RUN --mount=type=cache,target=/root/.m2 \
+    mvn -B -DskipTests package
 
 FROM ${DOCKER_REGISTRY}/eclipse-temurin:17-jre-jammy
 RUN apt-get update \

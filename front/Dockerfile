@@ -3,7 +3,8 @@ FROM ${DOCKER_REGISTRY}/node:22-alpine AS build
 WORKDIR /build
 
 COPY package.json yarn.lock ./
-RUN corepack enable && yarn install --frozen-lockfile
+RUN --mount=type=cache,target=/usr/local/share/.cache/yarn \
+    corepack enable && yarn install --frozen-lockfile
 
 COPY . .
 RUN yarn build

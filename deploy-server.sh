@@ -29,8 +29,25 @@ fi
 echo "[1/3] 正在检查部署配置……"
 docker compose --env-file .env.docker config --quiet
 
-echo "[2/3] 正在构建并启动数据库、后端和前端……"
-docker compose --env-file .env.docker up -d --build
+target="${1:-all}"
+
+echo "[2/3] 正在构建并启动：${target}……"
+case "$target" in
+  all)
+    docker compose --env-file .env.docker up -d --build
+    ;;
+  backend)
+    docker compose --env-file .env.docker up -d --build --no-deps backend
+    ;;
+  frontend)
+    docker compose --env-file .env.docker up -d --build --no-deps frontend
+    ;;
+  *)
+    echo "错误：只支持 all、backend 或 frontend。"
+    echo "例如：./deploy-server.sh frontend"
+    exit 1
+    ;;
+esac
 
 echo "[3/3] 正在显示运行状态……"
 docker compose --env-file .env.docker ps
