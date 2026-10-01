@@ -2,7 +2,7 @@ spring:
   application:
     name: sethub
   datasource:
-    url: ${SETHUB_DB_URL:jdbc:mysql://localhost:3306/sethub?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai}
+    url: ${SETHUB_DB_URL:jdbc:mysql://localhost:3306/person_workbench?createDatabaseIfNotExist=true&useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai}
     username: ${SETHUB_DB_USER:root}
     password: ${SETHUB_DB_PASSWORD:}
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -22,3 +22,13 @@ sethub:
   jwt-secret: ${SETHUB_JWT_SECRET:}
   data-dir: ${SETHUB_DATA_DIR:./data}
   cors-origins: ${SETHUB_CORS_ORIGINS:http://localhost:*,http://127.0.0.1:*}
+  public-origin: ${SETHUB_PUBLIC_ORIGIN:http://127.0.0.1:5174}
+  mail:
+    host: ${SETHUB_MAIL_HOST:}
+    port: ${SETHUB_MAIL_PORT:465}
+    username: ${SETHUB_MAIL_USERNAME:}
+    password: ${SETHUB_MAIL_PASSWORD:}
+    from: ${SETHUB_MAIL_FROM:}
+    ssl: ${SETHUB_MAIL_SSL:true}
+    starttls: ${SETHUB_MAIL_STARTTLS:false}
+    capture-only: false

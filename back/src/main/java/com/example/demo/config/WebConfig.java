@@ -6,5 +6,5 @@ import org.springframework.web.servlet.config.annotation.*;
 public class WebConfig implements WebMvcConfigurer {
     private final JwtInterceptor interceptor;
     public WebConfig(JwtInterceptor interceptor){this.interceptor=interceptor;}
-    @Override public void addInterceptors(InterceptorRegistry registry){registry.addInterceptor(interceptor).addPathPatterns("/**").excludePathPatterns("/auth/login","/auth/setup","/auth/setup/status","/error");}
+    @Override public void addInterceptors(InterceptorRegistry registry){registry.addInterceptor(interceptor).addPathPatterns("/**").excludePathPatterns("/auth/login","/auth/setup","/auth/setup/status","/public/questionnaire","/public/questionnaires/**","/public/positions","/public/offers/**","/error","/","/index.html","/assets/**","/favicon.ico","/favicon.svg");}
 }

@@ -25,7 +25,7 @@ test('column inference understands Chinese aliases', () => {
 })
 
 test('import preview validates salary and maps a unique job id', () => {
-  const parsed = parseCSVDocument('姓名,手机,岗位,最低薪资,最高薪资,状态,结果,原因\n张三,13900000000,摄影师,15,20,已关闭,未入职,薪资未达成一致')
+  const parsed = parseCSVDocument('姓名,手机,岗位,最低薪资,最高薪资,状态,结果,原因\n张三,13900000000,摄影师,15,20,已关闭,公司淘汰,薪资未达成一致')
   const [row] = prepareImportRows(parsed, inferColumnMapping(parsed.headers), { positions: [{ id: 7, name: '摄影师', status: '招聘中' }], defaultOwner: 'admin', importBatch: 'batch-test-001' })
   assert.deepEqual(row.errors, [])
   assert.equal(row.payload.jobId, 7)

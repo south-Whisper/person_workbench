@@ -440,4 +440,4 @@
 
 .el-dialog.candidate-dialog .el-dialog__body{
   padding:25px 45px 35px;
-}
+}.source-nickname-grid{display:grid;grid-template-columns:1.35fr .65fr;gap:18px;align-items:end}.followup-box{padding:17px;border:1px solid #cbd8e8;border-radius:13px;background:#fff}.note-field{margin-top:20px;padding-top:20px;border-top:1px solid #dce4ee}@media(max-width:720px){.source-nickname-grid{grid-template-columns:1fr}}

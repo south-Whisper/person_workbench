@@ -3,9 +3,15 @@ front/dist/
 back/target/
 back/data/
 back/uploads/
+back/config/mysql-secret.yml
+back/mysql-migration.sql
 *.log
 .env
 .env.local
+.env.docker
 front/.env.local
 back/.env
 test-output/
+.idea/
+.chrome-*/
+offer-action-*.png

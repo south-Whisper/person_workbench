@@ -3,7 +3,7 @@ import AppShell from './components/AppShell.vue'
 </script>
 <template>
   <router-view v-slot="{ Component, route }">
-    <component :is="Component" v-if="route.path === '/login'" />
+    <component :is="Component" v-if="['/login', '/questionnaire', '/offer-response', '/offer-action'].includes(route.path)" />
     <AppShell v-else><component :is="Component" /></AppShell>
   </router-view>
 </template>

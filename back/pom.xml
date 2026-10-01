@@ -37,15 +37,16 @@
             <artifactId>spring-boot-starter-webmvc</artifactId>
         </dependency>
 
-        <!-- JDBC supports MySQL and the persistent local H2 profile. -->
+        <!-- JDBC database access. The project now uses MySQL only. -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-jdbc</artifactId>
         </dependency>
+
+        <!-- SMTP mail delivery for issuing real Offer emails. -->
         <dependency>
-            <groupId>com.h2database</groupId>
-            <artifactId>h2</artifactId>
-            <scope>runtime</scope>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-mail</artifactId>
         </dependency>
 
         <!-- mysql -->

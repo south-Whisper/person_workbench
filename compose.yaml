@@ -1,0 +1,79 @@
+name: person_workbench
+
+services:
+  database:
+    image: ${DOCKER_REGISTRY}/mysql:8.4
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+      MYSQL_DATABASE: person_workbench
+      MYSQL_USER: sethub_app
+      MYSQL_PASSWORD: ${SETHUB_DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${SETHUB_DB_ROOT_PASSWORD}
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+
+  backend:
+    build:
+      context: ./back
+      args:
+        DOCKER_REGISTRY: ${DOCKER_REGISTRY}
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+      PORT: 8080
+      SETHUB_DB_URL: jdbc:mysql://database:3306/person_workbench?createDatabaseIfNotExist=true&useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false
+      SETHUB_DB_USER: sethub_app
+      SETHUB_DB_PASSWORD: ${SETHUB_DB_PASSWORD}
+      SETHUB_JWT_SECRET: ${SETHUB_JWT_SECRET}
+      SETHUB_DATA_DIR: /app/data
+      SETHUB_CORS_ORIGINS: ${SETHUB_PUBLIC_ORIGIN}
+      SETHUB_PUBLIC_ORIGIN: ${SETHUB_PUBLIC_ORIGIN}
+      SETHUB_MAIL_HOST: ${SETHUB_MAIL_HOST:-}
+      SETHUB_MAIL_PORT: ${SETHUB_MAIL_PORT:-465}
+      SETHUB_MAIL_USERNAME: ${SETHUB_MAIL_USERNAME:-}
+      SETHUB_MAIL_PASSWORD: ${SETHUB_MAIL_PASSWORD:-}
+      SETHUB_MAIL_FROM: ${SETHUB_MAIL_FROM:-}
+      SETHUB_MAIL_SSL: ${SETHUB_MAIL_SSL:-true}
+      SETHUB_MAIL_STARTTLS: ${SETHUB_MAIL_STARTTLS:-false}
+    volumes:
+      - sethub-data:/app/data
+    depends_on:
+      database:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:8080/auth/setup/status"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  frontend:
+    build:
+      context: ./front
+      args:
+        DOCKER_REGISTRY: ${DOCKER_REGISTRY}
+    restart: unless-stopped
+    ports:
+      - "${SETHUB_HTTP_PORT}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--output-document=-", "http://127.0.0.1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  mysql-data:
+  sethub-data:

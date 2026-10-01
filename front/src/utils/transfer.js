@@ -4,7 +4,7 @@ export const IMPORT_FIELDS = [
   { key: 'wechat', label: '微信', aliases: ['微信', '微信号', 'wechat'] },
   { key: 'email', label: '邮箱', aliases: ['邮箱', '电子邮箱', 'email'] },
   { key: 'source', label: '人才来源', aliases: ['人才来源', '招聘来源', '来源', 'source'] },
-  { key: 'owner', label: '负责人', aliases: ['负责人', '跟进人', '招聘负责人', 'owner'] },
+  { key: 'owner', label: 'HR', aliases: ['HR', '负责人', '跟进人', '招聘负责人', 'owner'] },
   { key: 'job', label: '关联岗位名称', aliases: ['关联岗位名称', '意向岗位', '应聘岗位', '岗位', '职位', 'job'] },
   { key: 'gender', label: '性别', aliases: ['性别', 'gender'] },
   { key: 'salaryMin', label: '期望月薪最低值（K）', aliases: ['期望月薪最低值（K）', '最低薪资', '薪资最小值', 'salaryMin'] },
@@ -24,9 +24,9 @@ export const IMPORT_FIELDS = [
   { key: 'nextStep', label: '下一步', aliases: ['下一步', '跟进计划', 'nextStep'] },
   { key: 'nextContactAt', label: '下次跟进时间', aliases: ['下次跟进时间', '跟进时间', 'nextContactAt'] }
 ]
-export const IMPORT_SOURCES = ['BOSS直聘', '猎聘', '智联招聘', '内推', '主动寻访', '历史导入', '其他']
+export const IMPORT_SOURCES = ['BOSS直聘', '猎聘', '智联招聘', '内推', '历史导入', '其他']
 export const IMPORT_STATUSES = ['待联系', '沟通中', '面试中', 'Offer中', '已入职', '人才储备', '已关闭']
-export const IMPORT_RESULTS = ['待定', '已入职', '未入职', '候选人拒绝', '公司淘汰', '暂缓']
+export const IMPORT_RESULTS = ['待定', '录用', '候选人拒绝', '公司淘汰', '暂缓']
 
 // Parse CSV as a state machine: quoted commas, escaped quotes, and multiline cells
 // retain their contents. Physical source line numbers survive blank/multiline rows.
@@ -84,7 +84,7 @@ export function parseCSV(input) {
 const normalizedHeader = value => String(value).trim().toLowerCase().replace(/[\s_\-（）()]/g, '')
 export function inferColumnMapping(headers) {
   const normalized = headers.map(normalizedHeader)
-  return Object.fromEntries(IMPORT_FIELDS.map(field => [field.key, normalized.findIndex(header => field.aliases.some(alias => normalizedHeader(alias) === header))]))
+  return Object.fromEntries(IMPORT_FIELDS.map(field => [field.key, normalized.findIndex(header => field.aliases.some(alias => header === normalizedHeader(alias) || header.startsWith(normalizedHeader(alias) + '*必填') || header.startsWith(normalizedHeader(alias) + '至少填一项')))]))
 }
 
 function validDate(value, includeTime = false) {
@@ -111,21 +111,23 @@ export function prepareImportRows(document, mapping, { positions = [], defaultSo
     if (!['未判断', '低', '一般', '较高', '很高', '放弃', '有兴趣', '积极'].includes(payload.companyIntent)) errors.push(`公司意愿“${payload.companyIntent}”无效`)
     if (!['未知', '未判断', '明确拒绝', '暂不考虑', '可以了解', '有兴趣', '积极', '强烈'].includes(payload.talentIntent)) errors.push(`人才意愿“${payload.talentIntent}”无效`)
     if (!payload.name) errors.push('缺少姓名或昵称')
-    if (!payload.owner) errors.push('缺少负责人')
+    if (!payload.owner) errors.push('缺少 HR')
     if (!payload.source) errors.push('缺少人才来源')
     else if (!IMPORT_SOURCES.includes(payload.source)) warnings.push(`来源“${payload.source}”将按原文保留`)
     if (![payload.phone, payload.wechat, payload.email].some(Boolean)) errors.push('手机、微信、邮箱至少填写一种')
+    if (payload.phone && !/^(?:\+?86)?1[3-9]\d{9}$/.test(payload.phone.replace(/[\s()-]/g, ''))) errors.push('手机格式不正确，应为 11 位中国大陆手机号')
+    if (payload.wechat && !/^[A-Za-z][-_A-Za-z0-9]{5,19}$/.test(payload.wechat)) errors.push('微信号格式不正确，应以字母开头并为 6—20 位')
     if (payload.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payload.email)) errors.push('邮箱格式不正确')
     if (payload.gender && !['男', '女'].includes(payload.gender)) errors.push('性别只能填写男或女，未知可留空')
     if (!IMPORT_STATUSES.includes(payload.status)) errors.push(`招聘状态“${payload.status}”无效`)
     if (!IMPORT_RESULTS.includes(payload.result)) errors.push(`当前结果“${payload.result}”无效`)
-    if ((['未入职', '候选人拒绝', '公司淘汰'].includes(payload.result) || payload.status === '已关闭') && !payload.reason) errors.push('未入职、拒绝、淘汰或关闭需要填写原因')
+    if ((['候选人拒绝', '公司淘汰'].includes(payload.result) || payload.status === '已关闭') && !payload.reason) errors.push('拒绝、淘汰或关闭需要填写原因')
     if (values.length > document.headers.length) errors.push('本行列数超过表头，检查逗号是否放在引号内')
     if (!!payload.salaryMin !== !!payload.salaryMax) errors.push('最低和最高薪资需要成对填写')
     if (payload.salaryMin && payload.salaryMax) {
       const numeric = /^\d+(?:\.\d+)?$/
       if (!numeric.test(payload.salaryMin) || !numeric.test(payload.salaryMax)) errors.push('薪资必须为非负数字，单位 K / 月')
-      else if (Number(payload.salaryMin) > Number(payload.salaryMax)) errors.push('最低薪资不能高于最高薪资')
+      else if (Number(payload.salaryMin) >= Number(payload.salaryMax)) errors.push('最高薪资必须大于最低薪资')
       else if (Number(payload.salaryMax) > 100000) errors.push('薪资数值过大，请核对单位为 K / 月')
     }
     payload.salaryMin = payload.salaryMin === '' ? null : Number(payload.salaryMin)
@@ -172,8 +174,15 @@ export function buildCandidateExport(rows) {
   const fields = IMPORT_FIELDS.filter(field => !['phone', 'wechat', 'email', 'salaryMin', 'salaryMax'].includes(field.key))
   return stringifyCSV([['人才编号', ...fields.map(field => field.label)], ...rows.map(person => [person.id, ...fields.map(field => person[field.key])])])
 }
-export function exportCandidatesCSV(rows, filename = '人才招聘-人才摘要.csv') { downloadCSV(buildCandidateExport(rows), filename) }
+export function exportCandidatesCSV(rows, filename = '人才管理-人才摘要.csv') { downloadCSV(buildCandidateExport(rows), filename) }
 export function downloadImportTemplate() {
   const keys = ['name', 'phone', 'wechat', 'email', 'source', 'owner', 'job', 'gender', 'salaryMin', 'salaryMax', 'applyTime', 'status', 'result', 'reason', 'location', 'company', 'currentRole', 'tags', 'experience', 'remark', 'nextStep', 'nextContactAt']
-  downloadCSV(stringifyCSV([keys.map(key => IMPORT_FIELDS.find(field => field.key === key).label)]), '人才招聘-人才导入模板.csv')
+  const required = new Set(['name', 'source', 'owner'])
+  const headers = keys.map(key => {
+    const label = IMPORT_FIELDS.find(field => field.key === key).label
+    if (required.has(key)) return `${label} *必填`
+    if (['phone', 'wechat', 'email'].includes(key)) return `${label}（至少填一项）`
+    return label
+  })
+  downloadCSV(stringifyCSV([headers]), '人才管理-人才导入模板.csv')
 }

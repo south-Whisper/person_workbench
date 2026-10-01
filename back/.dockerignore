@@ -1,0 +1,7 @@
+target
+data
+uploads
+config/mysql-secret.yml
+mysql-migration.sql
+.env
+*.log

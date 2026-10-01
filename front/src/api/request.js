@@ -6,7 +6,10 @@ request.interceptors.request.use(config => {
   return config
 })
 request.interceptors.response.use(response => response, error => {
-  if (error.response?.status === 401 && !error.config?.url?.includes('/auth/')) {
+  const requestUrl = String(error.config?.url || '')
+  const isPublicRequest = requestUrl.includes('/public/')
+  const isPublicPage = ['/questionnaire', '/offer-response', '/offer-action'].includes(location.pathname)
+  if (error.response?.status === 401 && !requestUrl.includes('/auth/') && !isPublicRequest && !isPublicPage) {
     for (const key of ['token', 'username', 'role']) localStorage.removeItem(key)
     if (location.pathname !== '/login') location.assign('/login?redirect=' + encodeURIComponent(location.pathname + location.search))
   }
