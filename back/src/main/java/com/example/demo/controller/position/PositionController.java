@@ -1,6 +1,6 @@
-package com.example.demo.controller;
+package com.example.demo.controller.position;
 
-import com.example.demo.service.TalentService;
+import com.example.demo.service.talent.TalentService;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -44,3 +44,5 @@ public class PositionController {
         return talents.changePositionStatus(id, input);
     }
 }
+
+

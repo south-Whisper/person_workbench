@@ -1,5 +1,7 @@
-package com.example.demo.service;
+package com.example.demo.service.mail;
 
+import com.example.demo.service.ApiException;
+import com.example.demo.service.CurrentUser;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -157,3 +159,4 @@ public class MailSettingsService {
     }
     private record CompanyRef(long id,String name){}
 }
+

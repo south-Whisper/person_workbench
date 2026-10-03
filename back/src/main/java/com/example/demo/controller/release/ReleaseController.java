@@ -1,6 +1,6 @@
-package com.example.demo.controller;
+package com.example.demo.controller.release;
 
-import com.example.demo.service.ReleaseService;
+import com.example.demo.service.release.ReleaseService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 import java.util.*;
@@ -18,3 +18,4 @@ public class ReleaseController {
         return releases.releases();
     }
 }
+

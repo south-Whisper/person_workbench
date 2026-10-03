@@ -1,5 +1,6 @@
-package com.example.demo.service;
+package com.example.demo.service.files;
 
+import com.example.demo.service.ApiException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -207,3 +208,4 @@ public class AssetFileService {
         }
     }
 }
+

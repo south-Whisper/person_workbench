@@ -1,4 +1,4 @@
-package com.example.demo.service;
+package com.example.demo.service.mail;
 
 import org.springframework.stereotype.Component;
 
@@ -28,3 +28,4 @@ public class MailTemplateSupport {
             + "</td></tr>";
     }
 }
+

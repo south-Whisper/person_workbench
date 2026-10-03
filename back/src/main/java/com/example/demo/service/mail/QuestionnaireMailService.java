@@ -1,4 +1,4 @@
-package com.example.demo.service;
+package com.example.demo.service.mail;
 
 import org.springframework.stereotype.Service;
 
@@ -27,3 +27,4 @@ public class QuestionnaireMailService {
     public Optional<QuestionnaireEmail> lastCaptured(){return Optional.ofNullable(lastCaptured.get());}
     public record QuestionnaireEmail(String recipient,String personName,String company,String department,String jobName,String owner,String url,long orgId){}
 }
+

@@ -1,4 +1,4 @@
-package com.example.demo.controller;
+package com.example.demo.controller.support;
 
 import com.example.demo.service.ApiException;
 import org.springframework.http.ResponseEntity;
@@ -17,3 +17,4 @@ public class ApiErrorHandler {
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     ResponseEntity<?> tooLarge(Exception e) { return ResponseEntity.status(413).body(Map.of("message", "附件不能超过 20 MB", "code", "FILE_TOO_LARGE")); }
 }
+

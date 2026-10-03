@@ -1,7 +1,7 @@
-package com.example.demo.controller;
+package com.example.demo.controller.talent;
 
-import com.example.demo.service.AssetFileService;
-import com.example.demo.service.TalentService;
+import com.example.demo.service.files.AssetFileService;
+import com.example.demo.service.talent.TalentService;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.ContentDisposition;
@@ -135,3 +135,5 @@ public class CandidateController {
         return files.preview(talents.downloadAsset(id, assetId));
     }
 }
+
+

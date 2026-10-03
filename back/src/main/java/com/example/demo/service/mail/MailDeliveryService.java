@@ -1,5 +1,6 @@
-package com.example.demo.service;
+package com.example.demo.service.mail;
 
+import com.example.demo.service.ApiException;
 import jakarta.mail.internet.MimeMessage;
 import jakarta.mail.AuthenticationFailedException;
 import org.slf4j.Logger;
@@ -48,3 +49,4 @@ public class MailDeliveryService {
         }
     }
 }
+

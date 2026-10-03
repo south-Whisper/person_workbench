@@ -50,7 +50,7 @@
         </div>
         <div v-if="selectedPosition" class="position-preview"><span><small>岗位性质</small><b>{{ selectedPosition.employmentType || '全职' }}</b></span><span><small>岗位预设薪资</small><b>{{ selectedPosition.minSalary != null && selectedPosition.maxSalary != null ? `${selectedPosition.minSalary} — ${selectedPosition.maxSalary} K / 月` : '面议 / 待定' }}</b></span><span><small>Base 地</small><b>{{ selectedPosition.baseLocation || '待补充' }}</b></span></div>
         <div v-if="positionError" class="inline-error" role="alert">{{ positionError }}<button type="button" class="clear-choice" @click="loadPositions">重试</button></div>
-        <div class="status-result-control"><fieldset class="choice-field" :class="{ 'choice-missing': attempted && !form.status }"><legend>招聘状态 <span class="required-mark">必填</span><button v-if="form.result" type="button" class="result-summary" :aria-expanded="resultPopoverOpen" @click="resultPopoverOpen = !resultPopoverOpen">当前结果：{{ form.result }} <span aria-hidden="true">{{ resultPopoverOpen ? '收起' : '修改' }}</span></button></legend><div class="segment-options"><label v-for="option in optionsWithCurrent(statuses, form.status)" :key="option" class="segment-option" :class="{ selected: form.status === option }"><input v-model="form.status" type="radio" name="status" :value="option" @change="onStatusSelected" /><span>{{ option }}</span></label></div></fieldset>
+        <div class="status-result-control"><fieldset class="choice-field" :class="{ 'choice-missing': attempted && !form.status }"><legend>招聘状态 <span class="required-mark">必填</span><button v-if="form.result && form.status !== '已入职'" type="button" class="result-summary" :aria-expanded="resultPopoverOpen" @click="resultPopoverOpen = !resultPopoverOpen">当前结果：{{ form.result }} <span aria-hidden="true">{{ resultPopoverOpen ? '收起' : '修改' }}</span></button></legend><div class="segment-options"><label v-for="option in optionsWithCurrent(statuses, form.status)" :key="option" class="segment-option" :class="{ selected: form.status === option }"><input v-model="form.status" type="radio" name="status" :value="option" @change="onStatusSelected" /><span>{{ option }}</span></label></div></fieldset>
           <fieldset v-if="resultPopoverOpen" class="choice-field result-popover"><legend>选择当前结果</legend><div class="segment-options"><button v-for="option in results" :key="option" type="button" class="segment-option" :class="{ selected: form.result === option }" @click="chooseResult(option)"><span>{{ option }}</span></button></div></fieldset>
         </div>
         <label v-if="requiresReason || form.reason" class="field reason-field" :class="{ 'field-missing': attempted && requiresReason && !form.reason?.trim() }"><span>{{ requiresReason ? '拒绝 / 关闭原因' : '历史结果原因' }} <span v-if="requiresReason" class="required-mark">必填</span></span><textarea v-model.trim="form.reason" name="reason" rows="3" maxlength="3000" placeholder="记录具体原因，例如：2021 年通过面试，因薪资预期未达成一致而未继续推进" /></label>
@@ -126,7 +126,15 @@ function today() { const now = new Date(); return `${now.getFullYear()}-${String
 function unwrap(response) { let value = response; if (value?.data !== undefined) value = value.data; if (value?.data !== undefined) value = value.data; return value }
 function optionsWithCurrent(options, current) { return current && !options.includes(current) ? [...options, current] : options }
 function positionLabel(job) { return `${job.company || '未设置公司'}：${job.name || '未命名岗位'}：${job.recruitmentCode || String(job.id || '').padStart(3, '0')}（已招 ${job.hiredCount || 0}/${job.headcount || 1}）` }
-function onStatusSelected() { if (form.status === '已入职') form.result = '录用'; else if (form.result === '录用') form.result = '待定'; resultPopoverOpen.value = true }
+function onStatusSelected() {
+  if (form.status === '已入职') {
+    form.result = '录用'
+    resultPopoverOpen.value = false
+    return
+  }
+  if (form.result === '录用') form.result = '待定'
+  resultPopoverOpen.value = true
+}
 function chooseResult(option) { form.result = option; resultPopoverOpen.value = false }
 function onWorkStatusChange() { if (form.workStatus === '离职') { form.company = ''; form.currentRole = '' } }
 function selectFile(key, event) { selectedFiles[key] = event.target.files?.[0] || null }

@@ -1,5 +1,6 @@
-package com.example.demo.service;
+package com.example.demo.service.release;
 
+import com.example.demo.service.JsonStore;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import java.util.*;
@@ -27,3 +28,4 @@ public class ReleaseService {
         });
     }
 }
+

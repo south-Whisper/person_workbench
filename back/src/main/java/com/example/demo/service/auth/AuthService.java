@@ -1,5 +1,7 @@
-package com.example.demo.service;
+package com.example.demo.service.auth;
 
+import com.example.demo.service.ApiException;
+import com.example.demo.service.audit.AuditService;
 import com.example.demo.utils.JwtUtil;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
@@ -129,3 +131,4 @@ public class AuthService {
     }
 
 }
+

@@ -1,5 +1,7 @@
-package com.example.demo.service;
+package com.example.demo.service.audit;
 
+import com.example.demo.service.CurrentUser;
+import com.example.demo.service.JsonStore;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.stereotype.Service;
@@ -10,6 +12,7 @@ import java.time.OffsetDateTime;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -19,10 +22,28 @@ import java.util.stream.Collectors;
 public class AuditService {
     private final JdbcTemplate db;
     private final JsonStore json;
+    private final CurrentUser user;
 
-    public AuditService(JdbcTemplate db, JsonStore json) {
+    public AuditService(JdbcTemplate db, JsonStore json, CurrentUser user) {
         this.db = db;
         this.json = json;
+        this.user = user;
+    }
+
+    public List<Map<String, Object>> listRecent() {
+        List<Map<String, Object>> entries = db.query(
+            "SELECT id,actor,action,created_at,person_id,record_id,position_id,summary FROM audit WHERE org_id=? ORDER BY id DESC LIMIT 200",
+            (row, number) -> {
+                Map<String, Object> item = new LinkedHashMap<>();
+                item.put("id", row.getLong("id")); item.put("actor", row.getString("actor")); item.put("action", row.getString("action")); item.put("createdAt", row.getString("created_at"));
+                item.put("personId", row.getObject("person_id")); item.put("recordId", row.getObject("record_id")); item.put("positionId", row.getObject("position_id")); item.put("summary", row.getString("summary"));
+                return item;
+            }, user.org()
+        );
+        for (Map<String, Object> entry : entries) {
+            entry.put("details", db.query("SELECT field_name,before_value,after_value FROM audit_change WHERE audit_id=? ORDER BY id", (row, number) -> Map.of("field", row.getString(1), "before", Objects.toString(row.getString(2), ""), "after", Objects.toString(row.getString(3), "")), entry.get("id")));
+        }
+        return entries;
     }
 
     public void recordAuthentication(String action, String username) {
@@ -98,3 +119,4 @@ public class AuditService {
         return Objects.toString(value);
     }
 }
+

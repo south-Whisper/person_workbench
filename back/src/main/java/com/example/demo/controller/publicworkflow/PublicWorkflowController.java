@@ -1,6 +1,8 @@
-package com.example.demo.controller;
+package com.example.demo.controller.publicworkflow;
 
-import com.example.demo.service.TalentService;
+import com.example.demo.service.talent.TalentService;
+import com.example.demo.service.offer.OfferResponseService;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -9,9 +11,11 @@ import java.util.Map;
 @RestController
 public class PublicWorkflowController {
     private final TalentService talents;
+    private final OfferResponseService offerResponses;
 
-    public PublicWorkflowController(TalentService talents) {
+    public PublicWorkflowController(TalentService talents, OfferResponseService offerResponses) {
         this.talents = talents;
+        this.offerResponses = offerResponses;
     }
 
     @PostMapping("/public/questionnaire")
@@ -44,7 +48,7 @@ public class PublicWorkflowController {
 
     @GetMapping("/public/offers/{token}")
     public Map<String, Object> publicOffer(@PathVariable String token) {
-        return talents.publicOffer(token);
+        return offerResponses.find(token);
     }
 
     @PostMapping("/public/offers/{token}/response")
@@ -52,6 +56,13 @@ public class PublicWorkflowController {
         @PathVariable String token,
         @RequestBody Map<String, Object> input
     ) {
-        return talents.respondToOffer(token, input);
+        return offerResponses.respond(token, input);
+    }
+
+    @GetMapping(value = "/public/offers/{token}/accept", produces = MediaType.TEXT_HTML_VALUE)
+    public String acceptOffer(@PathVariable String token) {
+        return offerResponses.acceptAndRender(token);
     }
 }
+
+

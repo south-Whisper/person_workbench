@@ -2,12 +2,12 @@ package com.example.demo.service;
 
 import java.util.LinkedHashMap;
 
-final class StructuredColumns {
+public final class StructuredColumns {
     private StructuredColumns() {}
-    static final LinkedHashMap<String,String> POSITION=new LinkedHashMap<>();
-    static final LinkedHashMap<String,String> RECORD=new LinkedHashMap<>();
-    static final LinkedHashMap<String,String> ONBOARDING=new LinkedHashMap<>();
-    static final LinkedHashMap<String,String> OFFER_RESPONSE=new LinkedHashMap<>();
+    public static final LinkedHashMap<String,String> POSITION=new LinkedHashMap<>();
+    public static final LinkedHashMap<String,String> RECORD=new LinkedHashMap<>();
+    public static final LinkedHashMap<String,String> ONBOARDING=new LinkedHashMap<>();
+    public static final LinkedHashMap<String,String> OFFER_RESPONSE=new LinkedHashMap<>();
     static {
         put(POSITION,"name","name VARCHAR(120)");put(POSITION,"minSalary","min_salary DECIMAL(12,2)");put(POSITION,"maxSalary","max_salary DECIMAL(12,2)");
         put(POSITION,"companyId","company_id BIGINT");put(POSITION,"company","company VARCHAR(200)");put(POSITION,"recruitmentCode","recruitment_code VARCHAR(40)");put(POSITION,"department","department VARCHAR(160)");put(POSITION,"location","location VARCHAR(160)");put(POSITION,"baseLocation","base_location VARCHAR(160)");put(POSITION,"description","description LONGTEXT");
@@ -47,5 +47,5 @@ final class StructuredColumns {
         put(OFFER_RESPONSE,"respondedAt","responded_at VARCHAR(40)");put(OFFER_RESPONSE,"responseReason","response_reason LONGTEXT");
     }
     private static void put(LinkedHashMap<String,String> map,String key,String definition){map.put(key,definition);}
-    static String column(String definition){return definition.substring(0,definition.indexOf(' '));}
+    public static String column(String definition){return definition.substring(0,definition.indexOf(' '));}
 }

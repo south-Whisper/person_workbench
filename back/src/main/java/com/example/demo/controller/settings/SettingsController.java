@@ -1,6 +1,8 @@
-package com.example.demo.controller;
+package com.example.demo.controller.settings;
 
 import com.example.demo.service.*;
+import com.example.demo.service.mail.MailDeliveryService;
+import com.example.demo.service.mail.MailSettingsService;
 import org.springframework.web.bind.annotation.*;
 import java.util.*;
 
@@ -37,3 +39,4 @@ public class SettingsController {
         return Map.of("sent", true, "recipient", recipient);
     }
 }
+

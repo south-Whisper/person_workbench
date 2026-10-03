@@ -2,7 +2,7 @@ package com.example.demo;
 
 import com.example.demo.service.JsonStore;
 import com.example.demo.service.SchemaMigration;
-import com.example.demo.service.OfferMailService;
+import com.example.demo.service.mail.OfferMailService;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -115,7 +115,7 @@ class DemoApplicationTests {
         Map<String,Object> second=ok("PUT","/candidate/"+personId+"/records/offers/"+offerId,Map.of("revision",1,"salaryMin",14,"salaryMax",17,"actualSalary",16,"status","已创建"));assertEquals(2,num(second,"version"));assertNotEquals(offerId,num(second,"id"));
         assertEquals(400,request("PUT","/candidate/"+personId+"/records/offers/"+offerId,Map.of("revision",1,"status","已完成"),token).statusCode());
         Map<String,Object> completed=ok("PUT","/candidate/"+personId+"/records/offers/"+num(second,"id"),Map.of("revision",1,"status","已完成"));assertEquals(3,num(completed,"version"));assertEquals("已完成",completed.get("status"));assertEquals("待回复",completed.get("responseStatus"));
-        String responseUrl=offerMail.lastCaptured().orElseThrow().responseUrl(),offerToken=responseUrl.substring(responseUrl.indexOf("token=")+6);Map<String,Object> publicOffer=json.read(request("GET","/public/offers/"+offerToken,null,null).body());assertEquals("待回复",publicOffer.get("responseStatus"));Map<String,Object> accepted=json.read(request("POST","/public/offers/"+offerToken+"/response",Map.of("decision","ACCEPTED"),null).body());assertEquals("已接受",accepted.get("responseStatus"));assertEquals(1,db.queryForObject("SELECT COUNT(*) FROM message WHERE category='Offer 已确认' AND person_id=? AND interview_id IS NULL AND status='已接受'",Integer.class,personId));
+        String acceptUrl=offerMail.lastCaptured().orElseThrow().acceptUrl(),offerToken=acceptUrl.substring(acceptUrl.indexOf("/offers/")+8,acceptUrl.indexOf("/accept"));Map<String,Object> publicOffer=json.read(request("GET","/public/offers/"+offerToken,null,null).body());assertEquals("待回复",publicOffer.get("responseStatus"));Map<String,Object> accepted=json.read(request("POST","/public/offers/"+offerToken+"/response",Map.of("decision","ACCEPTED"),null).body());assertEquals("已接受",accepted.get("responseStatus"));assertEquals(1,db.queryForObject("SELECT COUNT(*) FROM message WHERE category='Offer 已确认' AND person_id=? AND interview_id IS NULL AND status='已接受'",Integer.class,personId));
         assertEquals(400,request("PUT","/candidate/"+personId+"/records/offers/"+num(completed,"id"),Map.of("revision",1,"remark","完成后不允许修改"),token).statusCode());
         assertEquals(3,db.queryForObject("SELECT COUNT(*) FROM offer",Integer.class));
         assertEquals(1,db.queryForObject("SELECT COUNT(*) FROM information_schema.tables WHERE table_name='offer'",Integer.class));assertEquals(3,db.queryForObject("SELECT COUNT(*) FROM record WHERE entity_type='offer'",Integer.class));

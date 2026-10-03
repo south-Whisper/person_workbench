@@ -1,5 +1,5 @@
-package com.example.demo.controller;
-import com.example.demo.service.AuthService;
+package com.example.demo.controller.auth;
+import com.example.demo.service.auth.AuthService;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -28,3 +28,4 @@ public class AuthController {
         return auth.login(input);
     }
 }
+

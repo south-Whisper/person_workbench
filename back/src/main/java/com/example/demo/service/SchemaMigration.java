@@ -160,8 +160,15 @@ public class SchemaMigration {
                 "消息信箱只保留人才已填写问卷、面试安排和 Offer 已确认三类提醒。",
                 "移除顶部搜索框回车提示，并合并人才列表中重复的已入职与录用状态。"
         ));
+        insertRelease("V1.0.3","2026-10-03","后端模块化与招聘流程同步","按业务职责拆分后端目录，并让人才状态、招聘流程和 Offer 回复保持一致。",List.of(
+                "控制器按人才、岗位、组织、工作台、公开流程等业务拆分到独立子目录。",
+                "服务按人才、应聘流程、Offer、消息、组织、工作台、邮件、认证和审计等职责拆分。",
+                "人才状态改为面试中、Offer中或已入职时，最新招聘流程自动同步推进。",
+                "已入职自动记录为录用，不再弹出结果选择；顶部全局搜索框及遗留样式已移除。",
+                "Offer 邮件接受按钮改为一次点击直接完成，无需登录系统；拒绝仍保留原因和二次确认。"
+        ));
         db.update("UPDATE product_release SET active=FALSE");
-        db.update("UPDATE product_release SET active=TRUE WHERE version IN ('V1.0.1','V1.0.2')");
+        db.update("UPDATE product_release SET active=TRUE WHERE version IN ('V1.0.1','V1.0.2','V1.0.3')");
     }
 
     private void insertRelease(String version,String date,String title,String summary,List<String> changes){
