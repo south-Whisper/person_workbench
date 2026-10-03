@@ -3,6 +3,7 @@ package com.example.demo;
 import com.example.demo.service.JsonStore;
 import com.example.demo.service.SchemaMigration;
 import com.example.demo.service.mail.OfferMailService;
+import com.example.demo.service.mail.QuestionnaireMailService;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,6 +30,7 @@ class DemoApplicationTests {
     @Autowired SchemaMigration schema;
     @Autowired BCryptPasswordEncoder passwords;
     @Autowired OfferMailService offerMail;
+    @Autowired QuestionnaireMailService questionnaireMail;
     static String token;
     static long personId,jobId,applicationId,offerId;
     final HttpClient http=HttpClient.newHttpClient();
@@ -115,7 +117,7 @@ class DemoApplicationTests {
         Map<String,Object> second=ok("PUT","/candidate/"+personId+"/records/offers/"+offerId,Map.of("revision",1,"salaryMin",14,"salaryMax",17,"actualSalary",16,"status","已创建"));assertEquals(2,num(second,"version"));assertNotEquals(offerId,num(second,"id"));
         assertEquals(400,request("PUT","/candidate/"+personId+"/records/offers/"+offerId,Map.of("revision",1,"status","已完成"),token).statusCode());
         Map<String,Object> completed=ok("PUT","/candidate/"+personId+"/records/offers/"+num(second,"id"),Map.of("revision",1,"status","已完成"));assertEquals(3,num(completed,"version"));assertEquals("已完成",completed.get("status"));assertEquals("待回复",completed.get("responseStatus"));
-        String acceptUrl=offerMail.lastCaptured().orElseThrow().acceptUrl(),offerToken=acceptUrl.substring(acceptUrl.indexOf("/offers/")+8,acceptUrl.indexOf("/accept"));Map<String,Object> publicOffer=json.read(request("GET","/public/offers/"+offerToken,null,null).body());assertEquals("待回复",publicOffer.get("responseStatus"));Map<String,Object> accepted=json.read(request("POST","/public/offers/"+offerToken+"/response",Map.of("decision","ACCEPTED"),null).body());assertEquals("已接受",accepted.get("responseStatus"));assertEquals(1,db.queryForObject("SELECT COUNT(*) FROM message WHERE category='Offer 已确认' AND person_id=? AND interview_id IS NULL AND status='已接受'",Integer.class,personId));
+        String acceptUrl=offerMail.lastCaptured().orElseThrow().acceptUrl(),offerToken=acceptUrl.substring(acceptUrl.indexOf("/offers/")+8,acceptUrl.indexOf("/accept"));Map<String,Object> publicOffer=json.read(request("GET","/public/offers/"+offerToken,null,null).body());assertEquals("待回复",publicOffer.get("responseStatus"));HttpResponse<String> acceptPage=request("GET","/public/offers/"+offerToken+"/accept",null,null);assertEquals(200,acceptPage.statusCode());assertTrue(acceptPage.body().contains("Offer 已接受"));Map<String,Object> accepted=json.read(request("GET","/public/offers/"+offerToken,null,null).body());assertEquals("已接受",accepted.get("responseStatus"));assertEquals(1,db.queryForObject("SELECT COUNT(*) FROM message WHERE category='Offer 已确认' AND person_id=? AND interview_id IS NULL AND status='已接受'",Integer.class,personId));
         assertEquals(400,request("PUT","/candidate/"+personId+"/records/offers/"+num(completed,"id"),Map.of("revision",1,"remark","完成后不允许修改"),token).statusCode());
         assertEquals(3,db.queryForObject("SELECT COUNT(*) FROM offer",Integer.class));
         assertEquals(1,db.queryForObject("SELECT COUNT(*) FROM information_schema.tables WHERE table_name='offer'",Integer.class));assertEquals(3,db.queryForObject("SELECT COUNT(*) FROM record WHERE entity_type='offer'",Integer.class));
@@ -150,8 +152,8 @@ class DemoApplicationTests {
         assertEquals(0,db.queryForObject("SELECT COUNT(*) FROM information_schema.columns WHERE table_name='person' AND column_name IN ('import_batch','import_row')",Integer.class));
         int count=db.queryForObject("SELECT COUNT(*) FROM person",Integer.class);schema.initialize();assertEquals(count,db.queryForObject("SELECT COUNT(*) FROM person",Integer.class));
         Map<String,Object> workspace=ok("GET","/workspace",null);assertTrue(workspace.containsKey("stats"));assertTrue(workspace.containsKey("sources"));
-        assertEquals(400,request("POST","/public/questionnaire",Map.of("name","缺少联系方式","source","内推"),null).statusCode());
-        HttpResponse<String> questionnaire=request("POST","/public/questionnaire",Map.of("name","问卷人才","phone","13800138000","source","朋友推荐","gender","女","experience","3—5年","jobId",jobId,"salaryMin",12,"salaryMax",18),null);assertEquals(200,questionnaire.statusCode(),questionnaire.body());assertNotNull(json.read(questionnaire.body()).get("applicationId"));
+        Map<String,Object> invitation=ok("POST","/questionnaire-invitations",Map.of("recipientName","问卷人才","recipientEmail","questionnaire@example.com","jobId",jobId));assertEquals(Boolean.TRUE,invitation.get("sent"));
+        String questionnaireUrl=questionnaireMail.lastCaptured().orElseThrow().url(),questionnaireToken=questionnaireUrl.substring(questionnaireUrl.indexOf("token=")+6);HttpResponse<String> questionnaire=request("POST","/public/questionnaires/"+questionnaireToken,Map.of("phone","13800138000","source","朋友推荐","gender","女","experience","3—5年","salaryMin",12,"salaryMax",18),null);assertEquals(200,questionnaire.statusCode(),questionnaire.body());assertNotNull(json.read(questionnaire.body()).get("applicationId"));assertEquals(409,request("POST","/public/questionnaires/"+questionnaireToken,Map.of("phone","13800138000","source","朋友推荐","gender","女","experience","3—5年","salaryMin",12,"salaryMax",18),null).statusCode());
     }
     @Test @Order(7) void inboxAndDedicatedPositionStatusFlow() throws Exception {
         Map<String,Object> inbox=ok("GET","/inbox",null);assertTrue(num(inbox,"count")>0);assertTrue(num(inbox,"unreadCount")>0);assertTrue(array(inbox,"items").stream().anyMatch(item->"人才已填写问卷".equals(item.get("category"))));

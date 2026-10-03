@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { getPublicPositions, submitQuestionnaire, getQuestionnaireInvitation, submitQuestionnaireInvitation } from '@/api/candidate'
+import { getQuestionnaireInvitation, submitQuestionnaireInvitation } from '@/api/candidate'
 import BrandLockup from '@/components/BrandLockup.vue'
 import TalentChoiceGroup from '@/components/TalentChoiceGroup.vue'
 
@@ -18,13 +18,13 @@ const selectedPosition = computed(() => positions.value.find(item => String(item
 const salaryValid = computed(() => form.salaryMin !== '' && form.salaryMax !== '' && Number(form.salaryMin) >= 0 && Number(form.salaryMax) >= Number(form.salaryMin))
 function onWorkStatusChange() { if (form.workStatus === '离职') { form.company = ''; form.currentRole = '' } }
 
-async function loadPositions() { loadingPositions.value = true; positionError.value = ''; try { if (token.value) { invitation.value = await getQuestionnaireInvitation(token.value); if (invitation.value.expired) throw new Error('这份问卷链接已过期，请联系 HR 重新发送。'); if (invitation.value.status === '已提交') throw new Error('这份问卷已经提交，无需重复填写。'); positions.value = [invitation.value.job]; form.name = invitation.value.recipientName || ''; form.email = invitation.value.recipientEmail || ''; form.jobId = invitation.value.job.id } else positions.value = await getPublicPositions() } catch (cause) { positionError.value = cause.response?.data?.message || cause.message || '岗位读取失败，请稍后刷新页面。' } finally { loadingPositions.value = false } }
+async function loadPositions() { loadingPositions.value = true; positionError.value = ''; try { if (!token.value) throw new Error('这不是有效的专属问卷链接，请联系 HR 重新发送。'); invitation.value = await getQuestionnaireInvitation(token.value); if (invitation.value.expired) throw new Error('这份问卷链接已过期，请联系 HR 重新发送。'); if (invitation.value.status === '已提交') throw new Error('这份问卷已经提交，无需重复填写。'); positions.value = [invitation.value.job]; form.name = invitation.value.recipientName || ''; form.email = invitation.value.recipientEmail || ''; form.jobId = invitation.value.job.id } catch (cause) { positionError.value = cause.response?.data?.message || cause.message || '问卷读取失败，请联系 HR。' } finally { loadingPositions.value = false } }
 onMounted(loadPositions)
 async function submit() {
   attempted.value = true; error.value = ''
   if (!form.name.trim() || !form.source || !form.gender || !form.experience || !form.jobId || !hasContact.value || !salaryValid.value) { error.value = '请完成标有“必填”的项目，并至少留下一个联系方式。'; return }
   saving.value = true
-  try { const payload = { ...form, jobId: Number(form.jobId), salaryMin: Number(form.salaryMin), salaryMax: Number(form.salaryMax) }; if (token.value) await submitQuestionnaireInvitation(token.value, payload); else await submitQuestionnaire(payload); submitted.value = true }
+  try { const payload = { ...form, jobId: Number(form.jobId), salaryMin: Number(form.salaryMin), salaryMax: Number(form.salaryMax) }; await submitQuestionnaireInvitation(token.value, payload); submitted.value = true }
   catch (cause) { error.value = cause.response?.data?.message || cause.message || '提交失败，请稍后重试。' }
   finally { saving.value = false }
 }

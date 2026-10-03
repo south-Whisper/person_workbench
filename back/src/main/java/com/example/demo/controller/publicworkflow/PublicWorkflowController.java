@@ -5,7 +5,6 @@ import com.example.demo.service.offer.OfferResponseService;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -16,11 +15,6 @@ public class PublicWorkflowController {
     public PublicWorkflowController(TalentService talents, OfferResponseService offerResponses) {
         this.talents = talents;
         this.offerResponses = offerResponses;
-    }
-
-    @PostMapping("/public/questionnaire")
-    public Map<String, Object> questionnaire(@RequestBody Map<String, Object> input) {
-        return talents.submitQuestionnaire(input);
     }
 
     @PostMapping("/questionnaire-invitations")
@@ -39,11 +33,6 @@ public class PublicWorkflowController {
         @RequestBody Map<String, Object> input
     ) {
         return talents.submitQuestionnaire(token, input);
-    }
-
-    @GetMapping("/public/positions")
-    public List<Map<String, Object>> publicPositions() {
-        return talents.publicPositions();
     }
 
     @GetMapping("/public/offers/{token}")

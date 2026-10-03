@@ -55,6 +55,7 @@
           <input v-else v-model="form[field.key]" :type="field.type || 'text'" :placeholder="field.placeholder || `填写${field.label}`" :required="field.required" :min="field.min" :max="field.max" :step="field.step" :maxlength="field.maxlength || 240" />
           <small v-if="field.key === 'validityDays'" class="auto-note">有效期至 {{ offerDisplayExpiry }}</small>
         </label>
+        <InterviewFields v-if="recordType === 'interviews'" ref="interviewFields" :model-value="form" :employees="employees" :mode="mode" @update:model-value="value => Object.assign(form,value)" />
       </fieldset>
       <aside v-if="recordType === 'offers'" class="offer-live-preview" aria-label="Offer 预览"><div class="offer-preview-paper"><header><BrandLockup icon-only compact /><div><small>OFFER LETTER PREVIEW</small><strong>Offer 预览</strong></div></header><div class="offer-preview-person"><small>候选人</small><h3>{{ person.name }}</h3><p>{{ selectedPosition?.company || '公司待确认' }} · {{ selectedPosition?.name || '岗位待确认' }}</p></div><dl><div><dt>发送邮箱</dt><dd>{{ form.recipientEmail || '待填写' }}</dd></div><div v-if="readOnlyOffer"><dt>发送日期</dt><dd>{{ String(form.sentAt || '未记录').replace('T', ' ').slice(0, 16) }}</dd></div><div v-if="readOnlyOffer"><dt>候选人回复</dt><dd>{{ form.responseStatus || '待回复' }}{{ form.respondedAt ? ` · ${String(form.respondedAt).replace('T', ' ').slice(0, 16)}` : '' }}</dd></div><div><dt>薪资方案</dt><dd>{{ offerSalaryPreview }}</dd></div><div><dt>岗位预算</dt><dd>{{ positionBudgetText }}</dd></div><div><dt>试用期</dt><dd>{{ Number(form.probationMonths) ? `${form.probationMonths} 个月` : '无试用期' }}</dd></div><div><dt>社保与公积金</dt><dd>{{ form.socialInsurance || '待选择' }}</dd></div><div><dt>计划入职</dt><dd>{{ form.expectedStartDate || '待选择' }}</dd></div><div><dt>Offer 有效期</dt><dd>{{ offerDisplayExpiry }}</dd></div><div><dt>HR</dt><dd>{{ form.owner || '待安排' }}</dd></div></dl><p v-if="form.responseReason" class="offer-preview-remark">回复说明：{{ form.responseReason }}</p><p v-else class="offer-preview-remark">{{ form.remark || '补充说明会显示在这里。' }}</p><footer>SetHub 人才管理 · {{ readOnlyOffer ? '已完成版本，只读留档' : '内容随左侧填写实时更新' }}</footer></div></aside>
       <p v-if="error" class="record-error" role="alert">{{ error }}</p>
@@ -93,6 +94,7 @@ import { createRecord, updateRecord } from '@/api/candidate'
 import { getHrList } from '@/api/hr'
 import HrPicker from '@/components/HrPicker.vue'
 import BrandLockup from '@/components/BrandLockup.vue'
+import InterviewFields from '@/components/InterviewFields.vue'
 
 const props = defineProps({ modelValue: Boolean, recordType: { type: String, default: 'events' }, mode: { type: String, default: 'schedule' }, record: { type: Object, default: null }, person: { type: Object, required: true }, positions: { type: Array, default: () => [] }, initial: { type: Object, default: () => ({}) } })
 const emit = defineEmits(['update:modelValue', 'saved'])
@@ -103,6 +105,7 @@ const offerConfirmOpen = ref(false)
 const attempted = ref(false)
 const error = ref('')
 const employees = ref([])
+const interviewFields = ref(null)
 const readOnlyOffer = computed(() => props.recordType === 'offers' && props.record?.status === '已完成')
 const labels = { opportunities: '主动寻访', applications: '应聘流程', interviews: '面试', offers: 'Offer', compensations: '薪资事实', experiences: '经历', employments: '任职关系', collaborations: '项目合作' }
 const descriptions = { opportunities: '记录公司主动发现和接触的人才。', applications: '记录本次应聘的岗位与当前阶段。', interviews: '安排面试时间、轮次、面试官和方式。', offers: '记录最终谈定的录用条件。', compensations: '记录薪资变化，金额统一按 K / 月填写。', experiences: '补充教育、工作、项目和证书经历。', employments: '记录入职、转正与离职。', collaborations: '记录合作情况与评价。' }
@@ -122,8 +125,8 @@ const fields = computed(() => {
     opportunities: [text('title', '寻访机会标题', true, { wide: true, placeholder: '例如：主动接触资深摄影师' }), { ...job, required: false }, date('startedAt', '首次接触日期', true), owner('HR', true), choice('status', '当前状态', ['新发现', '待联系', '已联系', '有效沟通', '持续培育', '暂不考虑', '对方拒绝', '公司放弃', '重新激活'], true), choice('companyIntent', '公司意愿', ['未判断', '低', '一般', '较高', '很高', '放弃']), choice('talentIntent', '人才意愿', ['未知', '明确拒绝', '暂不考虑', '可以了解', '有兴趣', '积极', '强烈']), area('summary', '发现背景与沟通摘要'), area('reason', '暂缓 / 拒绝 / 放弃原因'), text('nextStep', '下一步'), date('nextContactAt', '下次跟进时间', false, true)],
     applications: [job, date('startedAt', '应聘开始日期', true), owner('HR', true), choice('status', '应聘状态', ['沟通中', '面试中', 'Offer中', '已入职', '候选人退出', '公司淘汰', '人才储备', '长期无响应'], true), choice('companyIntent', '公司意愿', ['未判断', '低', '一般', '较高', '很高', '放弃']), choice('talentIntent', '人才意愿', ['未知', '明确拒绝', '暂不考虑', '可以了解', '有兴趣', '积极', '强烈']), area('reason', '结果 / 关闭原因', false, '例如：2021 年面试通过，但候选人因家庭原因没有继续推进'), text('nextStep', '下一步'), date('nextContactAt', '下次跟进时间', false, true)],
     interviews: props.mode === 'evaluation'
-      ? [{ key: 'interviewContext', label: '对应面试安排', type: 'interview-context', wide: true }, choice('score', '综合评分', [1, 2, 3, 4, 5], true), choice('result', '推荐结论', ['强烈推荐', '推荐', '保留', '不推荐'], true), area('feedback', '事实、评价与依据', true, '记录具体表现、优势、风险和判断依据')]
-      : [application(true), date('scheduledAt', '面试时间', true, true, true), choice('round', '轮次', ['初面', '二面', '三面', '终面'], true), owner('面试官', true), choice('method', '面试方式', ['现场', '视频', '电话', '作品测试']), choice('status', '面试状态', ['待面试', '已改期', '已取消', '未出席'], true), area('reason', '改期 / 取消 / 未出席原因')],
+      ? [{ key: 'interviewContext', label: '对应面试安排', type: 'interview-context', wide: true }]
+      : [application(true)],
     offers: [application(true), text('recipientEmail', '发送邮箱', true, { type: 'email', wide: true, placeholder: '用于接收 Offer 的邮箱' }), ...(readOnlyOffer.value ? [text('sentAt', 'Offer 发送日期', false, { wide: true })] : []), { key: 'positionBudget', label: '岗位期望预算', type: 'budget', wide: true }, choice('salaryMode', '薪资填写方式', [{ value: 'monthly', label: '按月薪填写' }, { value: 'annual', label: '按年薪填写' }], true), ...(form.salaryMode === 'annual' ? [text('annualSalary', '谈定年薪（K / 年）', true, { type: 'number', min: 0, step: 0.01, wide: true })] : [text('actualSalary', '谈定月薪（K / 月）', true, { type: 'number', min: 0, step: 0.01 }), { key: 'annualPreview', label: '折合年薪', type: 'annual-preview' }, choice('salaryMonths', '年薪月数', [12, 13, 14, 15, 16, 17, 18], true)]), choice('probationMonths', '试用期', [{ value: 0, label: '无试用期' }, { value: 1, label: '1个月' }, { value: 2, label: '2个月' }, { value: 3, label: '3个月' }, { value: 4, label: '4个月' }, { value: 5, label: '5个月' }, { value: 6, label: '6个月' }], true), choice('socialInsurance', '社保与公积金', ['五险一金', '六险一金', '五险', '商业保险', '无社保'], true), date('expectedStartDate', '计划入职日期', true, false, true), choice('validityDays', 'Offer 有效期', [{ value: 7, label: '7 天' }, { value: 15, label: '15 天' }], true), owner('HR', true), area('remark', '补充说明')],
     compensations: [choice('type', '薪资事实类型', ['候选人公开期望', '候选人当前收入', '沟通后期望', '公司内部预算', '公司本轮报价', '候选人还价', '外部Offer', '最终Offer', '实际入职薪资', '转正调薪', '年度调薪', '晋升调薪', '离职时薪资'], true), salary, date('occurredAt', '生效 / 沟通时间', true, true), text('source', '信息来源', true, { placeholder: '例如：候选人口述、合同、面谈' }), application(), area('remark', '结构与备注', false, '说明税前 / 税后、绩效、年终奖及其他待遇')],
     experiences: [choice('type', '经历类型', ['工作', '教育', '项目', '证书', '作品'], true), text('organization', '公司 / 学校 / 机构', true), text('title', '职位 / 专业 / 作品名称', true), date('startDate', '开始日期', true), date('endDate', '结束日期（留空为至今）'), area('description', '经历描述', true)],
@@ -160,6 +163,7 @@ function validateForm() {
     if (field.required && field.type !== 'salary' && (form[field.key] === undefined || form[field.key] === null || String(form[field.key]).trim() === '')) return field.type === 'application' ? '该人才还没有可关联的应聘流程，请先建立应聘经历' : `请填写${field.label}`
   }
   if (fields.value.some(field => field.type === 'salary') && (form.salaryMin === '' || form.salaryMax === '' || form.salaryMin == null || form.salaryMax == null || !Number.isFinite(Number(form.salaryMin)) || !Number.isFinite(Number(form.salaryMax)) || Number(form.salaryMin) < 0 || Number(form.salaryMax) < Number(form.salaryMin))) return '请填写有效的薪资范围，最高金额应不低于最低金额'
+  if (props.recordType === 'interviews') { const message = interviewFields.value?.validate(); if (message) return message }
   if (form.startDate && form.endDate && form.endDate < form.startDate) return '结束日期不能早于开始日期'
   if (props.recordType === 'interviews' && props.mode === 'schedule' && !props.record?.id && String(form.scheduledAt || '').slice(0, 10) < todayLocal()) return '面试时间不能早于今天'
   if (props.recordType === 'offers' && String(form.expectedStartDate || '').slice(0, 10) < todayLocal()) return '计划入职日期不能早于今天'

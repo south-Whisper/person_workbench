@@ -50,11 +50,12 @@
         </div>
         <div v-if="selectedPosition" class="position-preview"><span><small>岗位性质</small><b>{{ selectedPosition.employmentType || '全职' }}</b></span><span><small>岗位预设薪资</small><b>{{ selectedPosition.minSalary != null && selectedPosition.maxSalary != null ? `${selectedPosition.minSalary} — ${selectedPosition.maxSalary} K / 月` : '面议 / 待定' }}</b></span><span><small>Base 地</small><b>{{ selectedPosition.baseLocation || '待补充' }}</b></span></div>
         <div v-if="positionError" class="inline-error" role="alert">{{ positionError }}<button type="button" class="clear-choice" @click="loadPositions">重试</button></div>
-        <div class="status-result-control"><fieldset class="choice-field" :class="{ 'choice-missing': attempted && !form.status }"><legend>招聘状态 <span class="required-mark">必填</span><button v-if="form.result && form.status !== '已入职'" type="button" class="result-summary" :aria-expanded="resultPopoverOpen" @click="resultPopoverOpen = !resultPopoverOpen">当前结果：{{ form.result }} <span aria-hidden="true">{{ resultPopoverOpen ? '收起' : '修改' }}</span></button></legend><div class="segment-options"><label v-for="option in optionsWithCurrent(statuses, form.status)" :key="option" class="segment-option" :class="{ selected: form.status === option }"><input v-model="form.status" type="radio" name="status" :value="option" @change="onStatusSelected" /><span>{{ option }}</span></label></div></fieldset>
-          <fieldset v-if="resultPopoverOpen" class="choice-field result-popover"><legend>选择当前结果</legend><div class="segment-options"><button v-for="option in results" :key="option" type="button" class="segment-option" :class="{ selected: form.result === option }" @click="chooseResult(option)"><span>{{ option }}</span></button></div></fieldset>
+        <div class="status-result-control"><fieldset class="choice-field" :class="{ 'choice-missing': attempted && !form.status }"><legend>招聘状态 <span class="required-mark">必填</span><button v-if="form.status === '已关闭' && form.result" type="button" class="result-summary" :aria-expanded="resultPopoverOpen" @click="resultPopoverOpen = !resultPopoverOpen">关闭结果：{{ form.result }} <span aria-hidden="true">{{ resultPopoverOpen ? '收起' : '修改' }}</span></button></legend><div class="segment-options"><label v-for="option in optionsWithCurrent(statuses, form.status)" :key="option" class="segment-option" :class="{ selected: form.status === option }"><input v-model="form.status" type="radio" name="status" :value="option" @change="onStatusSelected" /><span>{{ option }}</span></label></div></fieldset>
+          <fieldset v-if="resultPopoverOpen && form.status === '已关闭'" class="choice-field result-popover"><legend>关闭原因分类</legend><div class="segment-options"><button v-for="option in closedResults" :key="option" type="button" class="segment-option" :class="{ selected: form.result === option }" @click="chooseResult(option)"><span>{{ option }}</span></button></div></fieldset>
         </div>
+        <InterviewFields v-if="form.status === '面试中'" ref="interviewFields" :model-value="initialInterview" :employees="hrs" mode="combined" optional @update:model-value="value => Object.assign(initialInterview,value)" />
         <label v-if="requiresReason || form.reason" class="field reason-field" :class="{ 'field-missing': attempted && requiresReason && !form.reason?.trim() }"><span>{{ requiresReason ? '拒绝 / 关闭原因' : '历史结果原因' }} <span v-if="requiresReason" class="required-mark">必填</span></span><textarea v-model.trim="form.reason" name="reason" rows="3" maxlength="3000" placeholder="记录具体原因，例如：2021 年通过面试，因薪资预期未达成一致而未继续推进" /></label>
-        <div class="form-grid intent-grid">
+        <div v-if="showsIntent" class="form-grid intent-grid">
           <fieldset class="choice-field"><legend>公司意愿</legend><div class="segment-options"><label v-for="option in optionsWithCurrent(companyIntentions, form.companyIntent)" :key="option" class="segment-option" :class="{ selected: form.companyIntent === option }"><input v-model="form.companyIntent" type="radio" name="companyIntent" :value="option" /><span>{{ option }}</span></label></div></fieldset>
           <fieldset class="choice-field"><legend>人才意愿</legend><div class="segment-options"><label v-for="option in optionsWithCurrent(talentIntentions, form.talentIntent)" :key="option" class="segment-option" :class="{ selected: form.talentIntent === option }"><input v-model="form.talentIntent" type="radio" name="talentIntent" :value="option" /><span>{{ option }}</span></label></div></fieldset>
         </div>
@@ -84,6 +85,7 @@ import { getPositionList } from '@/api/position'
 import { getHrList } from '@/api/hr'
 import HrPicker from '@/components/HrPicker.vue'
 import TalentChoiceGroup from '@/components/TalentChoiceGroup.vue'
+import InterviewFields from '@/components/InterviewFields.vue'
 import { chinaCities, experienceOptions, findProvinceByLocation, formatLocation } from '@/data/chinaCities'
 
 const props = defineProps({ modelValue: Boolean, person: { type: Object, default: null }, initialDraft: { type: Object, default: null } })
@@ -92,7 +94,7 @@ const emit = defineEmits(['update:modelValue', 'saved'])
 const visible = computed({ get: () => props.modelValue, set: value => emit('update:modelValue', value) })
 const sources = ['BOSS直聘', '猎聘', '智联招聘', '内推', '历史导入', '其他']
 const statuses = ['待联系', '沟通中', '面试中', 'Offer中', '已入职', '人才储备', '已关闭']
-const results = ['待定', '录用', '候选人拒绝', '公司淘汰', '暂缓']
+const closedResults = ['候选人拒绝', '公司淘汰']
 const talentTags = ['品牌设计', '视觉设计', '电商经验', '内容运营', '市场营销', '软件开发', '产品经理', '数据分析', '项目管理', '管理经验', '校招人才', '跨境业务', '长期储备', '可远程', '可出差', '高潜人才']
 const currentYear = new Date().getFullYear()
 const experienceChoices = [`${currentYear - 1}届应届生`, `${currentYear}届应届生`, `${currentYear + 1}届应届生`, `${currentYear + 2}届应届生`, ...experienceOptions.filter(option => option !== '应届生')]
@@ -112,6 +114,8 @@ const positionError = ref('')
 const saving = ref(false)
 const attempted = ref(false)
 const resultPopoverOpen = ref(false)
+const interviewFields = ref(null)
+const initialInterview = reactive({})
 const selectedFiles = reactive({ idPhoto: null, resume: null, otherMaterial: null })
 const existingAssets = ref([])
 const deletingAssetId = ref(null)
@@ -132,8 +136,13 @@ function onStatusSelected() {
     resultPopoverOpen.value = false
     return
   }
-  if (form.result === '录用') form.result = '待定'
-  resultPopoverOpen.value = true
+  if (form.status === '已关闭') {
+    if (!closedResults.includes(form.result)) form.result = ''
+    resultPopoverOpen.value = true
+    return
+  }
+  form.result = '待定'
+  resultPopoverOpen.value = false
 }
 function chooseResult(option) { form.result = option; resultPopoverOpen.value = false }
 function onWorkStatusChange() { if (form.workStatus === '离职') { form.company = ''; form.currentRole = '' } }
@@ -163,7 +172,8 @@ const wechatError = computed(() => { const value=String(form.wechat || '').trim(
 const emailError = computed(() => { const value=String(form.email || '').trim(); if(!value)return ''; return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) ? '' : '请输入正确的邮箱地址，例如 name@example.com' })
 const salaryError = computed(() => { const emptyMin=form.salaryMin===''||form.salaryMin==null,emptyMax=form.salaryMax===''||form.salaryMax==null;if(emptyMin&&emptyMax)return '';if(emptyMin||emptyMax)return '最低薪资和最高薪资需要同时填写';const min=Number(form.salaryMin),max=Number(form.salaryMax);if(!Number.isFinite(min)||!Number.isFinite(max)||min<0||max<0)return '薪资必须是有效的非负数';return max<min?'最高薪资必须大于或等于最低薪资':'' })
 const visibleError = computed(() => error.value === '最高薪资必须大于最低薪资' && !salaryError.value ? '' : error.value)
-const requiresReason = computed(() => ['候选人拒绝', '公司淘汰'].includes(form.result) || form.status === '已关闭')
+const requiresReason = computed(() => form.status === '已关闭' && closedResults.includes(form.result))
+const showsIntent = computed(() => ['待联系', '沟通中'].includes(form.status))
 
 function resetForm() {
   const person = props.person || {}
@@ -191,6 +201,7 @@ function resetForm() {
   selectedProvince.value = findProvinceByLocation(form.location).province
   attempted.value = false; resultPopoverOpen.value = false
   Object.keys(selectedFiles).forEach(key => { selectedFiles[key] = null })
+  Object.keys(initialInterview).forEach(key => delete initialInterview[key])
   existingAssets.value = [...(person.assets || [])]
   locationPickerOpen.value = false
   error.value = ''; duplicates.value = []; duplicateError.value = ''; duplicateDecisionOpen.value = false; selectedDuplicateId.value = ''; forceCreate.value = false
@@ -260,10 +271,14 @@ async function submit() {
   if (min == null || max == null) { error.value = '请填写期望薪资的最低和最高金额。'; return }
   if (salaryError.value) { error.value = salaryError.value; return }
   if (requiresReason.value && !form.reason?.trim()) { error.value = '请记录拒绝、淘汰或关闭的具体原因，方便以后回顾。'; return }
+  if (form.status === '已关闭' && !closedResults.includes(form.result)) { error.value = '已关闭时请选择“候选人拒绝”或“公司淘汰”。'; return }
+  if (form.status === '面试中') { const message = interviewFields.value?.validate(); if (message) { error.value = message; return } }
   if (form.nextContactAt && !form.nextStep?.trim()) { error.value = '设置了跟进时间，请补充要完成的下一步。'; return }
   if (!props.person?.id && duplicates.value.length && !forceCreate.value) { selectedDuplicateId.value = duplicates.value[0]?.id || duplicates.value[0]?.person?.id || ''; duplicateDecisionOpen.value = true; return }
   const selectedHr = hrs.value.find(hr => String(hr.id) === String(form.ownerHrId))
   const payload = { ...form, ownerHrId: Number(form.ownerHrId), owner: selectedHr?.name || '', salaryMin: min, salaryMax: max, salary: min == null ? '' : `${min}-${max}K`, jobId: form.jobId || null, job: selectedPosition.value?.name || (form.jobId ? form.job : ''), nextContactAt: form.nextContactAt ? `${form.nextContactAt}:00` : null }
+  if (!showsIntent.value) { payload.companyIntent = '未判断'; payload.talentIntent = '未知' }
+  if (form.status === '面试中' && interviewFields.value?.hasValue()) payload.initialInterview = { ...initialInterview, owner: initialInterview.owner || selectedHr?.name || '', status: initialInterview.result ? '已完成' : '待面试' }
   if (props.person?.version != null) payload.version = props.person.version
   saving.value = true
   try {

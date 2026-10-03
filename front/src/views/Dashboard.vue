@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { getCandidateList, downloadAsset } from '@/api/candidate'
+import { getCandidateList, downloadAsset, sendQuestionnaireInvitation } from '@/api/candidate'
 import { getPositionList } from '@/api/position'
 import CandidateFormDialog from '@/components/CandidateFormDialog.vue'
 import DataTransferDialog from '@/components/DataTransferDialog.vue'
@@ -13,7 +13,8 @@ import { currentRelease, loadReleases } from '@/data/releases'
 const route = useRoute(), router = useRouter()
 const persons = ref([]), positions = ref([]), total = ref(0), stats = ref({})
 const loading = ref(true), error = ref(''), page = ref(1), showAdd = ref(false), showImport = ref(false), view = ref('all'), exporting = ref(false)
-const showQuestionnaire = ref(false), questionnaireLink = ref('')
+const showQuestionnaire = ref(false), sendingQuestionnaire = ref(false), questionnaireResult = ref(null), questionnaireError = ref('')
+const questionnaireForm = reactive({ recipientName: '', recipientEmail: '', jobId: '' })
 const showReleaseNotes = ref(false)
 const photoUrls = reactive({})
 const filters = reactive({ search: String(route.query.search || ''), status: '', source: '', jobId: '' })
@@ -50,8 +51,16 @@ onBeforeUnmount(() => { clearTimeout(timer); requestId++; Object.values(photoUrl
 function setPage(value) { if (value < 1 || value > pageCount.value || loading.value) return; page.value = value; loadPersons() }
 function clearFilters() { filters.search = ''; filters.status = ''; filters.source = ''; filters.jobId = ''; view.value = 'all'; page.value = 1; loadPersons() }
 async function saved() { page.value = 1; await refresh() }
-function openQuestionnaireSender() { questionnaireLink.value = `${location.origin}/questionnaire`; showQuestionnaire.value = true }
-async function copyQuestionnaire(){try{await navigator.clipboard.writeText(questionnaireLink.value);ElMessage.success('问卷链接已复制，可以直接发给人才')}catch{ElMessage.error('复制失败，请选中链接后手动复制')}}
+function openQuestionnaireSender() { Object.assign(questionnaireForm, { recipientName: '', recipientEmail: '', jobId: '' }); questionnaireResult.value = null; questionnaireError.value = ''; showQuestionnaire.value = true }
+async function sendQuestionnaire() {
+  questionnaireError.value = ''
+  if (!questionnaireForm.recipientName || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(questionnaireForm.recipientEmail) || !questionnaireForm.jobId) { questionnaireError.value = '请填写人才姓名、正确的邮箱并选择岗位。'; return }
+  sendingQuestionnaire.value = true
+  try { questionnaireResult.value = await sendQuestionnaireInvitation({ ...questionnaireForm, jobId: Number(questionnaireForm.jobId) }); ElMessage.success('专属问卷已发送') }
+  catch (cause) { questionnaireError.value = cause.response?.data?.message || cause.message || '问卷发送失败' }
+  finally { sendingQuestionnaire.value = false }
+}
+async function copyQuestionnaire(){try{await navigator.clipboard.writeText(questionnaireResult.value.url);ElMessage.success('专属链接已复制')}catch{ElMessage.error('复制失败，请选中链接后手动复制')}}
 async function loadPhotos(rows){
   const current=new Set(rows.map(item=>String(item.id)));for(const [id,url] of Object.entries(photoUrls))if(!current.has(id)){URL.revokeObjectURL(url);delete photoUrls[id]}
   await Promise.all(rows.map(async person=>{const photo=(person.assets||[]).find(asset=>asset.type==='证件照');if(!photo||photoUrls[person.id])return;try{photoUrls[person.id]=URL.createObjectURL(await downloadAsset(person.id,photo.id))}catch{}}))
@@ -85,10 +94,11 @@ async function exportFiltered() {
     <div v-if="error" class="error-state" role="alert">{{ error }} <button class="btn btn-small" @click="loadPersons">重新加载</button></div><div v-else-if="loading" class="loading-state"><span class="spinner"></span>正在连接人才档案…</div><div v-else-if="!persons.length" class="empty-state"><AppIcon name="people" :size="36" /><h3>{{ total ? '没有匹配的人才' : '下一次相遇，从这里开始' }}</h3><p>新增一份人才档案，或调整筛选条件。</p><button class="btn btn-primary" @click="showAdd = true">新增人才</button></div>
     <div v-else class="talent-table-wrap"><table class="talent-table"><thead><tr><th>人才</th><th>当前应聘岗位</th><th>状态</th><th>下一步</th><th>负责 HR</th><th>最近更新</th></tr></thead><tbody><tr v-for="(person,index) in persons" :key="person.id" tabindex="0" :aria-label="`打开${person.name}的人才档案`" @click="router.push('/person/'+person.id)" @keydown.enter="router.push('/person/'+person.id)"><td><div class="talent-person-cell"><span class="person-avatar large" :class="'tone-'+index%4"><img v-if="photoUrls[person.id]" :src="photoUrls[person.id]" :alt="person.name+'的证件照'" /><template v-else>{{initials(person.name)}}</template></span><div><strong>{{person.name}}</strong><small>{{person.location||'所在地待补充'}} · {{person.experience||'经验待了解'}} · {{person.source||'来源待补充'}}</small></div></div></td><td><strong class="job-name">{{person.job||'暂未关联岗位'}}</strong><small>{{salary(person)}}<template v-if="positionForPerson(person)"> · 已招 {{ positionForPerson(person).hiredCount || 0 }}/{{ positionForPerson(person).headcount || 1 }}</template></small></td><td><div class="status-cell"><span class="badge" :class="statusTone(person.status)">{{person.status||'待联系'}}</span><span v-if="person.result&&person.result!=='待定'&&!(person.status==='已入职'&&person.result==='录用')" class="badge" :class="['候选人拒绝','公司淘汰'].includes(person.result)?'rose':person.result==='录用'?'green':'gray'">{{person.result}}</span></div></td><td>{{person.nextStep||'待安排'}}</td><td>{{person.owner||'待分配'}}</td><td>{{dateTime(person.updatedAt)}}</td></tr></tbody></table></div>
   </section><CandidateFormDialog v-model="showAdd" @saved="saved" /><DataTransferDialog v-model="showImport" @saved="saved" />
-  <el-dialog v-model="showQuestionnaire" title="人才问卷链接" width="min(560px,94vw)"><p class="questionnaire-send-intro">复制下面的链接发给人才。对方打开后自行选择岗位并填写资料；提交后会自动建立人才档案和应聘记录。</p><label class="field questionnaire-link"><span>公开问卷链接</span><input :value="questionnaireLink" readonly @focus="$event.target.select()" /></label><div class="dialog-actions"><button type="button" class="btn" @click="showQuestionnaire=false">关闭</button><button type="button" class="btn btn-primary" @click="copyQuestionnaire">复制链接</button></div></el-dialog>
+  <el-dialog v-model="showQuestionnaire" title="发送专属人才问卷" width="min(600px,94vw)" :close-on-click-modal="false"><template v-if="!questionnaireResult"><p class="questionnaire-send-intro">每次发送都会生成唯一邀请编号，链接只能成功提交一次，7 天后自动失效。</p><form id="questionnaire-send-form" class="questionnaire-send-form" @submit.prevent="sendQuestionnaire"><label class="field">人才姓名<input v-model.trim="questionnaireForm.recipientName" maxlength="120" placeholder="怎么称呼这位人才" /></label><label class="field">收件邮箱<input v-model.trim="questionnaireForm.recipientEmail" type="email" maxlength="240" placeholder="name@example.com" /></label><label class="field questionnaire-job">应聘岗位<select v-model="questionnaireForm.jobId"><option value="">请选择岗位</option><option v-for="job in positions.filter(item => !item.status || item.status === '招聘中')" :key="job.id" :value="job.id">{{ job.company }}：{{ job.name }}（已招 {{ job.hiredCount || 0 }}/{{ job.headcount || 1 }}）</option></select></label><p v-if="questionnaireError" class="inline-error questionnaire-job">{{ questionnaireError }}</p></form></template><template v-else><div class="questionnaire-sent"><strong>专属问卷已发送</strong><span>邀请编号 {{ questionnaireResult.invitationId }}</span><small>这条链接只能提交一次。</small></div><label class="field questionnaire-link"><span>专属问卷链接</span><input :value="questionnaireResult.url" readonly @focus="$event.target.select()" /></label></template><div class="dialog-actions"><button type="button" class="btn" :disabled="sendingQuestionnaire" @click="showQuestionnaire=false">关闭</button><button v-if="questionnaireResult" type="button" class="btn btn-primary" @click="copyQuestionnaire">复制专属链接</button><button v-else type="submit" form="questionnaire-send-form" class="btn btn-primary" :disabled="sendingQuestionnaire">{{ sendingQuestionnaire ? '正在发送…' : '生成并发送' }}</button></div></el-dialog>
   <el-dialog v-model="showReleaseNotes" :title="`${currentRelease.version} 版本更新`" width="min(650px,94vw)" class="release-welcome"><div class="release-welcome-head"><span>{{currentRelease.version}}</span><div><small>{{currentRelease.date}}</small><h2>{{currentRelease.title}}</h2></div></div><p>{{currentRelease.summary}}</p><ul><li v-for="change in currentRelease.changes" :key="change">{{change}}</li></ul><div class="dialog-actions"><button type="button" class="btn" @click="showReleaseNotes=false">知道了</button><router-link class="btn btn-primary" to="/updates" @click="showReleaseNotes=false">查看历史版本</router-link></div></el-dialog>
 </template>
 
 <style scoped>
 .release-welcome-head{display:flex;align-items:center;gap:14px}.release-welcome-head>span{display:grid;place-items:center;width:54px;height:54px;border-radius:16px;background:#3370ff;color:#fff;font-size:18px;font-weight:850}.release-welcome-head small{color:#667085;font-size:10px}.release-welcome-head h2{margin:5px 0 0;color:#172033;font-size:18px}.release-welcome p{margin:18px 0;color:#475467;font-size:12px;line-height:1.75}.release-welcome ul{display:grid;gap:9px;margin:0 0 20px;padding:16px 18px 16px 34px;border:1px solid #d9e2ec;border-radius:12px;background:#fff;color:#344054}.release-welcome li{font-size:11px;line-height:1.65}.release-welcome li::marker{color:#3370ff}
+.questionnaire-send-form{display:grid;grid-template-columns:1fr 1fr;gap:15px}.questionnaire-job{grid-column:1/-1}.questionnaire-sent{display:grid;gap:6px;margin-bottom:16px;padding:16px;border-radius:12px;background:#edf8f1;color:#176b3a}.questionnaire-sent span,.questionnaire-sent small{font-size:11px}@media(max-width:560px){.questionnaire-send-form{grid-template-columns:1fr}.questionnaire-job{grid-column:auto}}
 </style>

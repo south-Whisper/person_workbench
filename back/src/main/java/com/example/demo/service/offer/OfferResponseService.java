@@ -65,12 +65,12 @@ public class OfferResponseService {
         } else {
             String closeReason = "候选人拒绝 Offer：" + reason;
             db.update("UPDATE application SET status='候选人退出',talent_intent='明确拒绝',reason=?,updated_at=?,revision=revision+1 WHERE id=? AND org_id=? AND person_id=?", closeReason, timestamp, applicationId, orgId, personId);
-            db.update("UPDATE person SET status='已关闭',result='候选人退出',talent_intent='明确拒绝',reason=?,updated_at=?,revision=revision+1 WHERE id=? AND org_id=?", closeReason, timestamp, personId, orgId);
+            db.update("UPDATE person SET status='已关闭',result='候选人拒绝',talent_intent='明确拒绝',reason=?,updated_at=?,revision=revision+1 WHERE id=? AND org_id=?", closeReason, timestamp, personId, orgId);
         }
         String personName = Objects.toString(offer.get("personName"), "候选人");
         String jobName = Objects.toString(offer.get("jobName"), "岗位");
         if ("已接受".equals(status)) inbox.create(orgId, ownerId, "Offer 已确认", personName + "已接受 Offer", jobName + " · 可进入入职流程", status, personId, null, "offer-accepted-" + offerId);
-        db.update("INSERT INTO record(org_id,person_id,application_id,entity_type,entity_id,action,title,summary,result,reason,occurred_at,actor,created_at) VALUES(?,?,?,'offer',?,'responded','候选人回复 Offer',?,?,?,?,?,'候选人',?)", orgId, personId, applicationId, offerId, personName + "已" + ("已接受".equals(status) ? "接受" : "拒绝") + " " + jobName, status, reason, timestamp, timestamp);
+        db.update("INSERT INTO record(org_id,person_id,application_id,entity_type,entity_id,action,title,summary,result,reason,occurred_at,actor,created_at) VALUES(?,?,?,'offer',?,'responded','候选人回复 Offer',?,?,?,?,'候选人',?)", orgId, personId, applicationId, offerId, personName + "已" + ("已接受".equals(status) ? "接受" : "拒绝") + " " + jobName, status, reason, timestamp, timestamp);
         db.update("INSERT INTO audit(org_id,actor,action,created_at,person_id,record_id,summary) VALUES(?,'候选人','offer.respond',?,?,?,'候选人通过邮件回复 Offer')", orgId, timestamp, personId, offerId);
         return findRow(token, false);
     }

@@ -94,7 +94,6 @@ public class SchemaMigration {
         migrateInitialAdminPassword();
         initializeReferenceData();
         migrateMessages();
-        migrateOtherMessages();
         migrateProfileRecordsIntoPerson();
         finalizeOnboardingAndEmployeeLinks();
     }
@@ -291,12 +290,6 @@ public class SchemaMigration {
     private void insertMessageIfMissing(Long org,Long recipient,String category,String title,String summary,String status,Long personId,Long interviewId,String sourceKey,String createdAt){
         if(org==null||recipient==null)return;Integer exists=db.queryForObject("SELECT COUNT(*) FROM message WHERE org_id=? AND recipient_employee_id=? AND source_key=?",Integer.class,org,recipient,sourceKey);if(exists!=null&&exists>0)return;
         db.update("INSERT INTO message(org_id,recipient_employee_id,category,title,summary,status,person_id,interview_id,source_key,is_read,created_at) VALUES(?,?,?,?,?,?,?,?,?,FALSE,?)",org,recipient,category,title,summary,status,personId,interviewId,sourceKey,createdAt);
-    }
-    private void migrateOtherMessages(){
-        if(db.queryForObject("SELECT COUNT(*) FROM migration WHERE version='message-other-sources-v2'",Integer.class)>0)return;
-        for(Map<String,Object> row:db.queryForList("SELECT id,org_id,owner_employee_id,name,next_step,next_contact_at,updated_at FROM person WHERE owner_employee_id IS NOT NULL AND next_contact_at IS NOT NULL AND next_contact_at<>''"))insertMessageIfMissing(number(row.get("org_id")),number(row.get("owner_employee_id")),"跟进提醒",Objects.toString(row.get("name"),"人才")+"需要跟进",Objects.toString(row.get("next_step"),"查看人才档案并安排下一步"),"待处理",null,null,"followup-"+row.get("id")+"-"+row.get("next_contact_at"),Objects.toString(row.get("next_contact_at"),Objects.toString(row.get("updated_at"),now())));
-        for(Map<String,Object> row:db.queryForList("SELECT id,org_id,owner_employee_id,job_name,status,expires_at,updated_at FROM offer WHERE owner_employee_id IS NOT NULL AND current_record=TRUE"))insertMessageIfMissing(number(row.get("org_id")),number(row.get("owner_employee_id")),"Offer","最新 Offer 状态",Objects.toString(row.get("job_name"),"岗位待补充")+" · 有效期至 "+Objects.toString(row.get("expires_at"),"待补充"),Objects.toString(row.get("status"),"已创建"),null,null,"offer-"+row.get("id"),Objects.toString(row.get("updated_at"),now()));
-        db.update("INSERT INTO migration(version,applied_at) VALUES('message-other-sources-v2',?)",now());
     }
     private void migrateProfileRecordsIntoPerson(){
         if(db.queryForObject("SELECT COUNT(*) FROM migration WHERE version='profile-records-in-person-v1'",Integer.class)>0)return;
