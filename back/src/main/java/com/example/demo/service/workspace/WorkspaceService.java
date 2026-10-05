@@ -25,7 +25,14 @@ public class WorkspaceService {
         Map<String, Object> result = new LinkedHashMap<>();
         for (String type : TalentService.TYPES) result.put(type, talents.recordsAcross(type));
         List<Map<String, Object>> people = talents.persons();
-        Map<Long, Long> photoByPerson = people.stream().map(person -> Map.entry(id(person.get("id")), photoAssetId(person))).filter(entry -> entry.getKey() != null && entry.getValue() != null).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (left, right) -> left));
+        Map<Long, Long> photoByPerson = new LinkedHashMap<>();
+        for (Map<String, Object> person : people) {
+            Long personId = id(person.get("id"));
+            Long assetId = photoAssetId(person);
+            if (personId != null && assetId != null) {
+                photoByPerson.putIfAbsent(personId, assetId);
+            }
+        }
 
         Map<Long, Map<String, Object>> positionById = talents.positions().stream().collect(Collectors.toMap(item -> id(item.get("id")), item -> item, (left, right) -> left));
         for (String type : TalentService.TYPES) {
