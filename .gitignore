@@ -15,3 +15,6 @@ test-output/
 .idea/
 .chrome-*/
 offer-action-*.png
+back/config/mail-secret.yml
+packages/
+启动系统.cmd

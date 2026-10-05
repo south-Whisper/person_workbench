@@ -58,7 +58,8 @@ public class OfferResponseService {
         long applicationId = number(offer, "applicationId");
         long ownerId = number(offer, "ownerEmployeeId");
         String timestamp = OffsetDateTime.now().toString();
-        db.update("UPDATE offer SET response_status=?,responded_at=?,response_reason=? WHERE id=? AND org_id=?", status, timestamp, reason.isBlank() ? null : reason, offerId, orgId);
+        String offerStatus = "已接受".equals(status) ? "已确认" : "已拒绝";
+        db.update("UPDATE offer SET status=?,response_status=?,responded_at=?,response_reason=? WHERE id=? AND org_id=?", offerStatus, status, timestamp, reason.isBlank() ? null : reason, offerId, orgId);
         if ("已接受".equals(status)) {
             db.update("UPDATE application SET status='待入职',talent_intent='强烈',updated_at=?,revision=revision+1 WHERE id=? AND org_id=? AND person_id=?", timestamp, applicationId, orgId, personId);
             db.update("UPDATE person SET status='待入职',talent_intent='强烈',updated_at=?,revision=revision+1 WHERE id=? AND org_id=?", timestamp, personId, orgId);
@@ -79,7 +80,7 @@ public class OfferResponseService {
     public String acceptAndRender(String token) {
         try {
             Map<String, Object> offer = respond(token, Map.of("decision", "ACCEPTED"));
-            return resultPage("Offer 已接受", Objects.toString(offer.get("personName"), "候选人") + "，您的选择已经记录，无需再登录或操作。", true);
+            return resultPage("您已接受 Offer", "结果已经反馈给公司，无需登录，也不需要继续操作。", true);
         } catch (ApiException error) {
             return resultPage("无法接受 Offer", error.getMessage(), false);
         }
@@ -90,7 +91,7 @@ public class OfferResponseService {
         List<Map<String, Object>> rows = db.queryForList(
             "SELECT o.id,o.org_id,o.person_id,o.application_id,o.owner_employee_id,o.job_name,o.company,o.salary_mode,o.actual_salary,o.annual_salary,o.salary_months,o.probation_months,o.social_insurance,o.expected_start_date,o.expires_at,o.sent_at,o.response_status,o.responded_at,o.response_reason,p.name person_name,e.name owner_name " +
                 "FROM offer o JOIN person p ON p.id=o.person_id AND p.org_id=o.org_id LEFT JOIN employee e ON e.id=o.owner_employee_id AND e.org_id=o.org_id " +
-                "WHERE o.response_token_hash=? AND o.current_record=TRUE AND o.status='已完成'" + (lock ? " FOR UPDATE" : ""), hash
+                "WHERE o.response_token_hash=? AND o.current_record=TRUE AND o.status IN ('已完成','已确认','已拒绝')" + (lock ? " FOR UPDATE" : ""), hash
         );
         if (rows.isEmpty()) throw new ApiException(404, "OFFER_LINK_INVALID", "Offer 链接不存在或已经失效");
         Map<String, Object> row = rows.get(0);

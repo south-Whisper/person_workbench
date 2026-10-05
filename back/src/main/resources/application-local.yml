@@ -1,6 +1,8 @@
 spring:
   config:
-    import: optional:file:./config/mysql-secret.yml
+    import:
+      - optional:file:./config/mysql-secret.yml
+      - optional:file:./config/mail-secret.yml
   datasource:
     url: ${SETHUB_DB_URL:jdbc:mysql://127.0.0.1:3306/person_workbench?createDatabaseIfNotExist=true&useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true}
     username: ${SETHUB_DB_USER:sethub_app}

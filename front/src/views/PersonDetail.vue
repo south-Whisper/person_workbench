@@ -112,7 +112,7 @@ async function finishOffer(offer) {
   try { await updateRecord(person.value.id, 'offers', offer.id, { ...offer, status: '已完成' }); ElMessage.success('Offer 已发送并完成，当前版本已锁定'); await load() }
   catch (cause) { ElMessage.error(cause.message) }
 }
-function tone(value) { return ['已入职','在职','已完成','已接受','通过'].includes(value) ? 'green' : ['已拒绝','未通过','候选人退出','公司淘汰','已关闭','已离职'].includes(value) ? 'rose' : ['Offer中','协商中','待入职'].includes(value) ? 'amber' : 'gray' }
+function tone(value) { return ['已入职','在职','已完成','已确认','已接受','通过'].includes(value) ? 'green' : ['已拒绝','未通过','候选人退出','公司淘汰','已关闭','已离职'].includes(value) ? 'rose' : ['Offer中','协商中','待入职'].includes(value) ? 'amber' : 'gray' }
 function eventIcon(type) { return ({ interview: 'calendar', offer: 'briefcase', asset: 'download', onboarding: 'check', departure: 'logout', communication: 'globe', application: 'board', employment: 'people' })[type] || 'people' }
 function eventType(type) { return ({ communication:'沟通', discovery:'发现人才', interview:'面试', negotiation:'谈薪', offer:'Offer', asset:'附件', onboarding:'入职', probation:'转正', transfer:'调岗', promotion:'晋升', salary:'薪资', departure:'离职', rehire:'返聘', application:'应聘', profile:'档案更新', import:'数据迁移', created:'建立档案', experience:'经历', employment:'员工任职' })[type] || '其他动态' }
 function eventTarget(event) {
