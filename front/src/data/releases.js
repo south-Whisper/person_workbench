@@ -4,7 +4,7 @@ import { getReleases } from '@/api/releases'
 export const releases = ref([])
 export const releaseError = ref('')
 export const currentRelease = computed(() => releases.value[0] || {
-  version: '—', date: '', title: '正在读取版本', summary: '正在从数据库读取版本更新内容。', changes: []
+  version: '—', date: '', updatedAt: '', title: '正在读取版本', summary: '正在从数据库读取版本更新内容。', changes: []
 })
 
 let pending

@@ -7,10 +7,10 @@ onMounted(() => loadReleases().catch(() => {}))
 <template>
   <div class="page-heading"><div><div class="eyebrow">PRODUCT UPDATES</div><h1>版本更新</h1><p>查看当前版本和每次更新带来的变化。</p></div><span class="current-version">当前 {{ currentRelease.version }}</span></div>
   <p v-if="releaseError" class="release-error">{{ releaseError }} <button class="text-link" @click="loadReleases(true)">重新读取</button></p>
-  <section class="surface release-hero"><div><small>当前版本 · {{ currentRelease.date }}</small><h2>{{ currentRelease.version }} · {{ currentRelease.title }}</h2><p>{{ currentRelease.summary }}</p></div><router-link class="btn" to="/settings">返回系统设置</router-link></section>
+  <section class="surface release-hero"><div><small>当前版本 · 更新时间 {{ currentRelease.updatedAt || currentRelease.date }}</small><h2>{{ currentRelease.version }} · {{ currentRelease.title }}</h2><p>{{ currentRelease.summary }}</p></div><router-link class="btn" to="/settings">返回系统设置</router-link></section>
   <section class="release-history" aria-label="历史版本">
     <article v-for="release in releases" :key="release.version" class="surface release-card">
-      <header><span>{{ release.version }}</span><div><small>{{ release.date }}</small><h2>{{ release.title }}</h2></div></header>
+      <header><span>{{ release.version }}</span><div><small>更新时间 {{ release.updatedAt || release.date }}</small><h2>{{ release.title }}</h2></div></header>
       <p>{{ release.summary }}</p>
       <ul><li v-for="change in release.changes" :key="change">{{ change }}</li></ul>
     </article>

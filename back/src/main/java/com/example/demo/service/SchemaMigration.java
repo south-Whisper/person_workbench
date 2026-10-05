@@ -166,8 +166,15 @@ public class SchemaMigration {
                 "已入职自动记录为录用，不再弹出结果选择；顶部全局搜索框及遗留样式已移除。",
                 "Offer 邮件接受按钮改为一次点击直接完成，无需登录系统；拒绝仍保留原因和二次确认。"
         ));
+        insertRelease("V1.0.4","2026-10-06","加载性能与版本记录优化","减少重复读取和等待，让页面更快展示业务数据，并为每次正式更新显示精确时间。",List.of(
+                "人才列表改为数据库分页查询，只读取当前页的 10 条数据，不再每次扫描全部人才和 Offer。",
+                "头像改为后台渐进加载，人才数据返回后立即结束加载状态。",
+                "切换页面时保留已经读取的页面，返回时不再重复请求相同数据。",
+                "版本记录增加精确更新时间，V1.0.4 的改动可在版本更新页直接查看。",
+                "候选人接受 Offer 后直接显示成功结果，并同步更新 Offer、招聘流程、入职流程和消息信箱。"
+        ));
         db.update("UPDATE product_release SET active=FALSE");
-        db.update("UPDATE product_release SET active=TRUE WHERE version IN ('V1.0.1','V1.0.2','V1.0.3')");
+        db.update("UPDATE product_release SET active=TRUE WHERE version IN ('V1.0.1','V1.0.2','V1.0.3','V1.0.4')");
     }
 
     private void insertRelease(String version,String date,String title,String summary,List<String> changes){

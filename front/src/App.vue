@@ -4,7 +4,7 @@ import AppShell from './components/AppShell.vue'
 <template>
   <router-view v-slot="{ Component, route }">
     <component :is="Component" v-if="['/login', '/questionnaire', '/offer-response', '/offer-action'].includes(route.path)" />
-    <AppShell v-else><component :is="Component" /></AppShell>
+    <AppShell v-else><KeepAlive :max="10"><component :is="Component" /></KeepAlive></AppShell>
   </router-view>
 </template>
 <style src="./assets/theme.css"></style>

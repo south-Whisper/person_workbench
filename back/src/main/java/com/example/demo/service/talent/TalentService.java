@@ -42,12 +42,28 @@ public class TalentService {
     public TalentService(JdbcTemplate db,JsonStore json,CurrentUser user,SchemaMigration schema,OfferMailService offerMail,QuestionnaireMailService questionnaireMail,AuditService audits,InboxService inbox,ApplicationFlowService applicationFlow,EmployeeService employees,@Value("${sethub.public-origin:http://127.0.0.1:5174}") String publicOrigin){this.db=db;this.json=json;this.user=user;this.schema=schema;this.offerMail=offerMail;this.questionnaireMail=questionnaireMail;this.audits=audits;this.inbox=inbox;this.applicationFlow=applicationFlow;this.employees=employees;this.publicOrigin=publicOrigin.replaceAll("/+$","");}
 
     public Map<String,Object> list(String search,String status,String source,Long jobId,int page,int size){
-        if(page<1||size<1)throw ApiException.bad("页码和每页数量必须为正整数");size=Math.min(size,10);
-        List<Map<String,Object>> all=persons();String query=Objects.toString(search,"").strip().toLowerCase(Locale.ROOT);
-        List<Map<String,Object>> matched=all.stream().filter(p->query.isBlank()||searchText(p).contains(query)).filter(p->blank(status)||status.equals(str(p,"status"))).filter(p->blank(source)||source.equals(str(p,"source"))).filter(p->jobId==null||Objects.equals(id(p.get("jobId")),jobId)).toList();
-        int from=(int)Math.min((long)(page-1)*size,matched.size()),to=Math.min(from+size,matched.size());Map<String,Object> stats=new LinkedHashMap<>();stats.put("total",all.size());stats.put("communicating",all.stream().filter(p->Set.of("待联系","待沟通","沟通中","已沟通","沟通").contains(str(p,"status"))).count());stats.put("interviewing",all.stream().filter(p->str(p,"status").contains("面试")).count());stats.put("hired",all.stream().filter(p->Set.of("已入职","在职","试用期","已转正").contains(str(p,"status"))).count());stats.put("offers",recordsAcross("offers").stream().filter(p->!"已完成".equals(str(p,"status"))).count());return Map.of("items",matched.subList(from,to),"total",matched.size(),"page",page,"size",size,"stats",stats);
+        if(page<1||size<1)throw ApiException.bad("页码和每页数量必须为正整数");
+        size=Math.min(size,10);
+        List<String> filters=new ArrayList<>(List.of("p.org_id=?"));
+        List<Object> arguments=new ArrayList<>(List.of(user.org()));
+        String query=Objects.toString(search,"").strip().toLowerCase(Locale.ROOT);
+        if(!query.isBlank()){
+            filters.add("LOWER(CONCAT_WS(' ',p.name,p.nickname,p.phone,p.email,p.wechat,p.source,p.location,p.company,p.current_position,p.experience,p.remark,p.tags,COALESCE(pos.name,''))) LIKE ?");
+            arguments.add("%"+query+"%");
+        }
+        if(!blank(status)){filters.add("p.status=?");arguments.add(status);}
+        if(!blank(source)){filters.add("p.source=?");arguments.add(source);}
+        if(jobId!=null){filters.add("p.job_id=?");arguments.add(jobId);}
+        String from=" FROM person p LEFT JOIN employee e ON e.id=p.owner_employee_id AND e.org_id=p.org_id LEFT JOIN position pos ON pos.id=p.job_id AND pos.org_id=p.org_id WHERE "+String.join(" AND ",filters);
+        long matched=Optional.ofNullable(db.queryForObject("SELECT COUNT(*)"+from,Long.class,arguments.toArray())).orElse(0L);
+        int offset=(int)Math.min((long)(page-1)*size,matched);
+        List<Object> pageArguments=new ArrayList<>(arguments);pageArguments.add(size);pageArguments.add(offset);
+        List<Map<String,Object>> items=personRows("SELECT p.*,e.name owner_name"+from+" ORDER BY p.id DESC LIMIT ? OFFSET ?",pageArguments.toArray());
+        Map<Long,String> jobs=db.query("SELECT id,name FROM position WHERE org_id=? AND parent_position_id IS NULL AND COALESCE(current_record,TRUE)=TRUE",(r,n)->Map.entry(r.getLong("id"),r.getString("name")),user.org()).stream().collect(Collectors.toMap(Map.Entry::getKey,Map.Entry::getValue,(a,b)->a));
+        items.forEach(person->person.put("job",jobs.getOrDefault(id(person.get("jobId")),"")));
+        Map<String,Object> counts=db.queryForMap("SELECT COUNT(*) total,COALESCE(SUM(CASE WHEN status IN ('待联系','待沟通','沟通中','已沟通','沟通') THEN 1 ELSE 0 END),0) communicating,COALESCE(SUM(CASE WHEN status LIKE '%面试%' THEN 1 ELSE 0 END),0) interviewing,COALESCE(SUM(CASE WHEN status='Offer中' THEN 1 ELSE 0 END),0) offers,COALESCE(SUM(CASE WHEN status IN ('已入职','在职','试用期','已转正') THEN 1 ELSE 0 END),0) hired FROM person WHERE org_id=?",user.org());
+        return Map.of("items",items,"total",matched,"page",page,"size",size,"stats",counts);
     }
-    private String searchText(Map<String,Object> p){return List.of("name","nickname","phone","email","wechat","job","source","location","company","currentRole","experience","remark","tags").stream().map(k->str(p,k)).collect(Collectors.joining(" ")).toLowerCase(Locale.ROOT);}
     public List<Map<String,Object>> persons(){Map<Long,String> jobs=positions().stream().collect(Collectors.toMap(p->id(p.get("id")),p->str(p,"name"),(a,b)->a));return personRows("SELECT p.*,e.name owner_name FROM person p LEFT JOIN employee e ON e.id=p.owner_employee_id AND e.org_id=p.org_id WHERE p.org_id=? ORDER BY p.id DESC",user.org()).stream().peek(p->p.put("job",jobs.getOrDefault(id(p.get("jobId")),""))).toList();}
     public Map<String,Object> person(long personId){Map<String,Object> p=basePerson(personId);Long job=id(p.get("jobId"));p.put("job",job==null?"":str(position(job),"name"));for(String type:TYPES)p.put(type,records(personId,type));return p;}
     private Map<String,Object> basePerson(long personId){List<Map<String,Object>> rows=personRows("SELECT p.*,e.name owner_name FROM person p LEFT JOIN employee e ON e.id=p.owner_employee_id AND e.org_id=p.org_id WHERE p.id=? AND p.org_id=?",personId,user.org());if(rows.isEmpty())throw ApiException.missing();return rows.get(0);}

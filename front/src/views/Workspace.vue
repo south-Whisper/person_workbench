@@ -139,8 +139,8 @@ async function load() {
 }
 onMounted(async () => { await Promise.all([load(), getPositionList().then(value => { jobs.value = value }), getHrList().then(value => { hrs.value = value })]) })
 onBeforeUnmount(()=>Object.values(avatarUrls).forEach(url=>URL.revokeObjectURL(url)))
-async function loadAvatarPhotos(workspace){const ids=[...new Set(Object.values(workspace||{}).flatMap(value=>Array.isArray(value)?value:[]).map(item=>item.personId).filter(Boolean))];await Promise.all(ids.map(async id=>{if(avatarUrls[id])return;try{const person=await getCandidate(id),photo=(person.assets||[]).find(asset=>asset.type==='证件照');if(photo)avatarUrls[id]=URL.createObjectURL(await downloadAsset(id,photo.id))}catch{}}))}
-watch(() => route.path, () => { search.value = ''; state.value = ''; load() })
+async function loadAvatarPhotos(workspace){const photos=new Map();for(const value of Object.values(workspace||{}))if(Array.isArray(value))for(const item of value)if(item.personId&&item.photoAssetId&&!photos.has(String(item.personId)))photos.set(String(item.personId),item.photoAssetId);await Promise.all([...photos].map(async([id,assetId])=>{if(avatarUrls[id])return;try{avatarUrls[id]=URL.createObjectURL(await downloadAsset(id,assetId))}catch{}}))}
+watch(() => route.path, () => { search.value = ''; state.value = '' })
 async function searchPeople() {
   const id = ++pickEpoch; personLoading.value = true; pickerError.value = ''
   const requiredStatus = key.value === 'offers' ? 'Offer中' : key.value === 'interviews' ? '面试中' : ''

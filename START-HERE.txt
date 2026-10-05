@@ -1,4 +1,4 @@
-SetHub 人才管理 V1.0.3 首次运行
+SetHub 人才管理 V1.0.4 首次运行
 
 1. 安装并启动 Docker Desktop。
 2. 双击 start-system.cmd。
